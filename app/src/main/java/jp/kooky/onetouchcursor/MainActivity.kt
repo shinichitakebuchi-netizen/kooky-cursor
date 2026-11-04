@@ -179,7 +179,7 @@ private fun Screen(
             }
             SwitchRow("触れる範囲を常にうっすら表示", st.showArea) { update(st.copy(showArea = it)) }
             Text(
-                "※ この設定画面を開いている間は、触れる範囲を枠付きで濃く表示します（触っても反応しません）",
+                "※ この設定画面を開いている間は、触れる範囲を枠付きで濃く表示します（カーソルは出ますが、離してもタップしません）",
                 color = TextSub, fontSize = 12.sp
             )
             SliderRow("太さ（触れる幅）", st.triggerWidthDp.toFloat(), 8f..48f, "${st.triggerWidthDp}dp") {
@@ -244,8 +244,8 @@ private fun Screen(
         }
 
         Text(
-            "※ この画面を開いている間はトリガーが反応しません（設定中の誤タップ防止）。" +
-                "動作確認はホームや他のアプリで行ってください。",
+            "※ この画面を開いている間は、カーソルは出ますが指を離してもタップしません（設定中の誤タップ防止）。" +
+                "タップの動作確認はホームや他のアプリで行ってください。",
             color = TextSub, fontSize = 12.sp, lineHeight = 18.sp
         )
 
