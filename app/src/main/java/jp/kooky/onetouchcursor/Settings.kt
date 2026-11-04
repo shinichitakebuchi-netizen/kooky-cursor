@@ -5,56 +5,58 @@ import android.content.SharedPreferences
 
 /** 設定値。SharedPreferences に保存し、サービス側は変更を即時反映する。 */
 data class Settings(
-    val rightHand: Boolean = true,      // 操作位置 右/左
-    val padWidthDp: Int = 220,          // 操作エリア 幅
-    val padHeightDp: Int = 150,         // 操作エリア 高さ
-    val padBottomDp: Int = 56,          // 操作エリアの位置（下からの距離）
-    val padSideDp: Int = 12,            // 操作エリアの位置（端からの距離）
-    val speed: Float = 2.0f,            // カーソル速度 0.5〜5.0
-    val cursorSize: Int = 1,            // 0=小 1=中 2=大
+    // ── トリガー ──
+    val rightEdge: Boolean = true,        // 右端 / 左端
+    val triggerPosPercent: Int = 55,      // トリガー中心の高さ（画面上端=0% / 下端=100%）
+    val triggerLengthDp: Int = 180,       // トリガーの長さ
+    val triggerWidthDp: Int = 20,         // トリガーの太さ（触れる幅）
+    val triggerColor: Int = 0xFFFF8A2B.toInt(),
+    val triggerTransparency: Int = 40,    // 0%=不透明 / 100%=完全に透明
+    val holdMs: Int = 250,                // 長押し判定の時間
+    val enabled: Boolean = true,          // トリガー表示 ON/OFF
+
+    // ── カーソル ──
+    val speed: Float = 2.5f,              // 0.5〜5.0
+    val cursorSize: Int = 1,              // 0=小 1=中 2=大
     val cursorColor: Int = 0xFFFF8A2B.toInt(),
-    val transparency: Int = 30,         // 0%=不透明 / 100%=完全に透明
+
+    // ── 操作 ──
     val vibrate: Boolean = true,
-    val dragThresholdDp: Int = 10,      // この距離以上動いたら「移動した」とみなす
-    val doubleClick: Boolean = true,
-    val longPress: Boolean = true,
-    val padVisible: Boolean = true,
+    val cancelOnReturn: Boolean = true,   // トリガー上に指を戻して離すとキャンセル
 ) {
     fun save(prefs: SharedPreferences) {
         prefs.edit()
-            .putBoolean(K_RIGHT, rightHand)
-            .putInt(K_PAD_W, padWidthDp)
-            .putInt(K_PAD_H, padHeightDp)
-            .putInt(K_PAD_BOTTOM, padBottomDp)
-            .putInt(K_PAD_SIDE, padSideDp)
+            .putBoolean(K_RIGHT, rightEdge)
+            .putInt(K_POS, triggerPosPercent)
+            .putInt(K_LEN, triggerLengthDp)
+            .putInt(K_WIDTH, triggerWidthDp)
+            .putInt(K_TCOLOR, triggerColor)
+            .putInt(K_TTRANS, triggerTransparency)
+            .putInt(K_HOLD, holdMs)
+            .putBoolean(K_ENABLED, enabled)
             .putFloat(K_SPEED, speed)
             .putInt(K_SIZE, cursorSize)
             .putInt(K_COLOR, cursorColor)
-            .putInt(K_TRANS, transparency)
             .putBoolean(K_VIB, vibrate)
-            .putInt(K_DRAG, dragThresholdDp)
-            .putBoolean(K_DOUBLE, doubleClick)
-            .putBoolean(K_LONG, longPress)
-            .putBoolean(K_VISIBLE, padVisible)
+            .putBoolean(K_CANCEL, cancelOnReturn)
             .apply()
     }
 
     companion object {
-        const val PREFS_NAME = "onetouch_settings"
-        const val K_RIGHT = "right_hand"
-        const val K_PAD_W = "pad_w"
-        const val K_PAD_H = "pad_h"
-        const val K_PAD_BOTTOM = "pad_bottom"
-        const val K_PAD_SIDE = "pad_side"
+        const val PREFS_NAME = "onetouch_settings_v2"
+        const val K_RIGHT = "right_edge"
+        const val K_POS = "trigger_pos"
+        const val K_LEN = "trigger_len"
+        const val K_WIDTH = "trigger_width"
+        const val K_TCOLOR = "trigger_color"
+        const val K_TTRANS = "trigger_trans"
+        const val K_HOLD = "hold_ms"
+        const val K_ENABLED = "enabled"
         const val K_SPEED = "speed"
         const val K_SIZE = "cursor_size"
         const val K_COLOR = "cursor_color"
-        const val K_TRANS = "transparency"
         const val K_VIB = "vibrate"
-        const val K_DRAG = "drag_threshold"
-        const val K_DOUBLE = "double_click"
-        const val K_LONG = "long_press"
-        const val K_VISIBLE = "pad_visible"
+        const val K_CANCEL = "cancel_on_return"
 
         fun prefs(ctx: Context): SharedPreferences =
             ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -62,20 +64,19 @@ data class Settings(
         fun load(p: SharedPreferences): Settings {
             val d = Settings()
             return Settings(
-                rightHand = p.getBoolean(K_RIGHT, d.rightHand),
-                padWidthDp = p.getInt(K_PAD_W, d.padWidthDp),
-                padHeightDp = p.getInt(K_PAD_H, d.padHeightDp),
-                padBottomDp = p.getInt(K_PAD_BOTTOM, d.padBottomDp),
-                padSideDp = p.getInt(K_PAD_SIDE, d.padSideDp),
+                rightEdge = p.getBoolean(K_RIGHT, d.rightEdge),
+                triggerPosPercent = p.getInt(K_POS, d.triggerPosPercent),
+                triggerLengthDp = p.getInt(K_LEN, d.triggerLengthDp),
+                triggerWidthDp = p.getInt(K_WIDTH, d.triggerWidthDp),
+                triggerColor = p.getInt(K_TCOLOR, d.triggerColor),
+                triggerTransparency = p.getInt(K_TTRANS, d.triggerTransparency),
+                holdMs = p.getInt(K_HOLD, d.holdMs),
+                enabled = p.getBoolean(K_ENABLED, d.enabled),
                 speed = p.getFloat(K_SPEED, d.speed),
                 cursorSize = p.getInt(K_SIZE, d.cursorSize),
                 cursorColor = p.getInt(K_COLOR, d.cursorColor),
-                transparency = p.getInt(K_TRANS, d.transparency),
                 vibrate = p.getBoolean(K_VIB, d.vibrate),
-                dragThresholdDp = p.getInt(K_DRAG, d.dragThresholdDp),
-                doubleClick = p.getBoolean(K_DOUBLE, d.doubleClick),
-                longPress = p.getBoolean(K_LONG, d.longPress),
-                padVisible = p.getBoolean(K_VISIBLE, d.padVisible),
+                cancelOnReturn = p.getBoolean(K_CANCEL, d.cancelOnReturn),
             )
         }
     }

@@ -2,5 +2,5 @@
 <resources>
     <string name="app_name">OneTouch Cursor</string>
     <string name="service_name">OneTouch Cursor</string>
-    <string name="service_desc">画面下部のトラックパッドでカーソルを動かし、指を離した位置をタップします。このサービスは画面の内容を読み取りません。カーソル位置へのタップ・長押し・ドラッグ・スクロール操作を送るためだけに使います。</string>
+    <string name="service_desc">画面端のトリガーを長押ししてスワイプするとカーソルが出て、指を離した位置をタップします。このサービスは画面の内容を読み取りません。カーソル位置へのタップを送るためだけに使います。</string>
 </resources>

@@ -102,7 +102,7 @@ private fun Screen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text("OneTouch Cursor", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Text("画面下のパッドでカーソルを動かし、指を離した位置をタップ", color = TextSub, fontSize = 13.sp)
+        Text("画面端の帯を長押し→スワイプでカーソル、離した位置をタップ", color = TextSub, fontSize = 13.sp)
 
         // ── 状態 ──
         Card(title = "サービスの状態") {
@@ -137,30 +137,33 @@ private fun Screen(
             }
         }
 
-        // ── 操作パネル ──
-        Card(title = "操作パネル") {
-            SwitchRow("パネルを表示", st.padVisible) { update(st.copy(padVisible = it)) }
-            Label("操作位置")
+        // ── トリガー ──
+        Card(title = "トリガー（画面端の帯）") {
+            SwitchRow("トリガーを表示", st.enabled) { update(st.copy(enabled = it)) }
+            Label("置く場所")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Choice("左手（左下）", !st.rightHand) { update(st.copy(rightHand = false)) }
-                Choice("右手（右下）", st.rightHand) { update(st.copy(rightHand = true)) }
-            }
-            SliderRow("幅", st.padWidthDp.toFloat(), 140f..400f, "${st.padWidthDp}dp") {
-                update(st.copy(padWidthDp = it.toInt()))
-            }
-            SliderRow("高さ", st.padHeightDp.toFloat(), 90f..320f, "${st.padHeightDp}dp") {
-                update(st.copy(padHeightDp = it.toInt()))
-            }
-            SliderRow("下からの位置", st.padBottomDp.toFloat(), 0f..400f, "${st.padBottomDp}dp") {
-                update(st.copy(padBottomDp = it.toInt()))
-            }
-            SliderRow("端からの位置", st.padSideDp.toFloat(), 0f..200f, "${st.padSideDp}dp") {
-                update(st.copy(padSideDp = it.toInt()))
+                Choice("左端", !st.rightEdge) { update(st.copy(rightEdge = false)) }
+                Choice("右端", st.rightEdge) { update(st.copy(rightEdge = true)) }
             }
             SliderRow(
-                "透明度（0%=不透明 / 100%=完全に透明）",
-                st.transparency.toFloat(), 0f..100f, "${st.transparency}%"
-            ) { update(st.copy(transparency = it.toInt())) }
+                "上下の位置（0%=上端 / 100%=下端）",
+                st.triggerPosPercent.toFloat(), 0f..100f, "${st.triggerPosPercent}%"
+            ) { update(st.copy(triggerPosPercent = it.toInt())) }
+            SliderRow("長さ", st.triggerLengthDp.toFloat(), 60f..500f, "${st.triggerLengthDp}dp") {
+                update(st.copy(triggerLengthDp = it.toInt()))
+            }
+            SliderRow("太さ（触れる幅）", st.triggerWidthDp.toFloat(), 8f..48f, "${st.triggerWidthDp}dp") {
+                update(st.copy(triggerWidthDp = it.toInt()))
+            }
+            SliderRow(
+                "透明度（0%=不透明 / 100%=ほぼ透明）",
+                st.triggerTransparency.toFloat(), 0f..100f, "${st.triggerTransparency}%"
+            ) { update(st.copy(triggerTransparency = it.toInt())) }
+            Label("色")
+            ColorPicker(st.triggerColor) { update(st.copy(triggerColor = it)) }
+            SliderRow("長押しの時間", st.holdMs.toFloat(), 100f..800f, "${st.holdMs}ms") {
+                update(st.copy(holdMs = (it / 10).toInt() * 10))
+            }
         }
 
         // ── カーソル ──
@@ -181,16 +184,9 @@ private fun Screen(
         // ── 操作 ──
         Card(title = "操作") {
             SwitchRow("振動", st.vibrate) { update(st.copy(vibrate = it)) }
-            SwitchRow("ダブルクリック（動かさず2回タップ）", st.doubleClick) {
-                update(st.copy(doubleClick = it))
+            SwitchRow("トリガーに指を戻して離したらキャンセル", st.cancelOnReturn) {
+                update(st.copy(cancelOnReturn = it))
             }
-            SwitchRow("長押し（動かさず長押し→離す／そのまま動かすとドラッグ）", st.longPress) {
-                update(st.copy(longPress = it))
-            }
-            SliderRow(
-                "ドラッグ判定の移動距離", st.dragThresholdDp.toFloat(), 3f..40f,
-                "${st.dragThresholdDp}dp"
-            ) { update(st.copy(dragThresholdDp = it.toInt())) }
         }
 
         Card(title = "テストエリア") {
@@ -199,11 +195,7 @@ private fun Screen(
             TestButtons()
         }
 
-        Text(
-            "2本指でパッドをなぞる → 指を離したときにカーソル位置からスクロールします。",
-            color = TextSub, fontSize = 12.sp
-        )
-        Spacer(Modifier.height(260.dp)) // パネルに隠れないよう余白
+        Spacer(Modifier.height(40.dp))
     }
 }
 
