@@ -117,16 +117,14 @@ private fun Screen(
         Modifier
             .fillMaxSize()
             .background(Navy)
+            .systemBarsPadding()   // ステータスバー・ナビバーと重ならないように
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("OneTouch Cursor", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-                Text("v$version", color = TextSub, fontSize = 12.sp)
-            }
-            Button(onClick = openUpdate) { Text("UPDATE") }
+        Column {
+            Text("OneTouch Cursor", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text("v$version", color = TextSub, fontSize = 12.sp)
         }
         Text("画面端の帯を長押し→スワイプでカーソル、離した位置をタップ", color = TextSub, fontSize = 13.sp)
 
