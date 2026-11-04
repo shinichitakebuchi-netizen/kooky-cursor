@@ -169,6 +169,7 @@ class CursorService : AccessibilityService(),
         cursorView?.apply {
             radiusDp = when (s.cursorSize) { 0 -> 9f; 2 -> 20f; else -> 14f }
             color = s.cursorColor
+            shape = s.cursorShape
             invalidate()
         }
     }

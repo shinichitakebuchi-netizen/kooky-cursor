@@ -24,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -201,6 +203,8 @@ private fun Screen(
             SliderRow("速度", st.speed, 0.5f..5f, String.format("%.1f", st.speed)) {
                 update(st.copy(speed = (it * 10).toInt() / 10f))
             }
+            Label("形")
+            ShapePicker(st.cursorShape, st.cursorColor) { update(st.copy(cursorShape = it)) }
             Label("サイズ")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("小", "中", "大").forEachIndexed { i, t ->
@@ -326,6 +330,43 @@ private fun Choice(text: String, selected: Boolean, onClick: () -> Unit) {
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
         Text(text, color = if (selected) Color.Black else Color.White, fontSize = 13.sp)
+    }
+}
+
+@Composable
+private fun ShapePicker(current: Int, color: Int, onPick: (Int) -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+        CursorShapes.names.forEachIndexed { i, name ->
+            val selected = i == current
+            Column(
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (selected) Color(0xFF2A3A5E) else Color(0xFF111A2C))
+                    .border(
+                        if (selected) 2.dp else 1.dp,
+                        if (selected) Orange else Color(0x33FFFFFF),
+                        RoundedCornerShape(12.dp)
+                    )
+                    .clickable { onPick(i) }
+                    .padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                androidx.compose.foundation.Canvas(Modifier.size(44.dp)) {
+                    val r = 9.dp.toPx()
+                    // 矢印は先端がタップ位置なので少し左上に寄せて全体を枠内に収める
+                    val ox = if (i == CursorShapes.ARROW) size.width * 0.3f else size.width / 2
+                    val oy = if (i == CursorShapes.ARROW) size.height * 0.18f else size.height / 2
+                    drawIntoCanvas {
+                        CursorShapes.draw(it.nativeCanvas, ox, oy, i, r, color, 255)
+                    }
+                }
+                Text(
+                    name, color = if (selected) Color.White else TextSub,
+                    fontSize = 10.sp, maxLines = 1
+                )
+            }
+        }
     }
 }
 

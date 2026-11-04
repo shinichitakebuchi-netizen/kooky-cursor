@@ -20,6 +20,7 @@ data class Settings(
     val speed: Float = 2.5f,              // 0.5〜5.0
     val cursorSize: Int = 1,              // 0=小 1=中 2=大
     val cursorColor: Int = 0xFFFF8A2B.toInt(),
+    val cursorShape: Int = 0,             // CursorShapes の番号
     // カーソルの初期位置
     val startFixed: Boolean = false,      // false=指の近く / true=画面の決まった位置
     val startOffsetXDp: Int = 70,         // 指の近く：指から内側へ
@@ -45,6 +46,7 @@ data class Settings(
             .putFloat(K_SPEED, speed)
             .putInt(K_SIZE, cursorSize)
             .putInt(K_COLOR, cursorColor)
+            .putInt(K_SHAPE, cursorShape)
             .putBoolean(K_SFIXED, startFixed)
             .putInt(K_SOX, startOffsetXDp)
             .putInt(K_SOY, startOffsetYDp)
@@ -69,6 +71,7 @@ data class Settings(
         const val K_SPEED = "speed"
         const val K_SIZE = "cursor_size"
         const val K_COLOR = "cursor_color"
+        const val K_SHAPE = "cursor_shape"
         const val K_SFIXED = "start_fixed"
         const val K_SOX = "start_offset_x"
         const val K_SOY = "start_offset_y"
@@ -95,6 +98,7 @@ data class Settings(
                 speed = p.getFloat(K_SPEED, d.speed),
                 cursorSize = p.getInt(K_SIZE, d.cursorSize),
                 cursorColor = p.getInt(K_COLOR, d.cursorColor),
+                cursorShape = p.getInt(K_SHAPE, d.cursorShape),
                 startFixed = p.getBoolean(K_SFIXED, d.startFixed),
                 startOffsetXDp = p.getInt(K_SOX, d.startOffsetXDp),
                 startOffsetYDp = p.getInt(K_SOY, d.startOffsetYDp),
