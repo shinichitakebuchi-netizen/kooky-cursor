@@ -36,6 +36,8 @@ class CursorService : AccessibilityService(),
             previewOn = on
             instance?.let { svc ->
                 svc.trigger?.let { it.preview = on; it.alpha = svc.triggerAlpha(); it.invalidate() }
+                // 設定画面を開いている間はトリガーを反応させない（下の設定画面をそのまま触れる）
+                svc.setTriggerTouchable(!on)
             }
         }
     }
@@ -152,6 +154,11 @@ class CursorService : AccessibilityService(),
             lp.x = 0
             val center = screenH * s.triggerPosPercent / 100
             lp.y = (center - h / 2).coerceIn(0, (screenH - h).coerceAtLeast(0))
+            lp.flags = if (previewOn) {
+                lp.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+            } else {
+                lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+            }
             trigger?.let { runCatching { wm.updateViewLayout(it, lp) } }
         }
         trigger?.apply {
@@ -261,13 +268,13 @@ class CursorService : AccessibilityService(),
             .build()
         val cb = object : GestureResultCallback() {
             override fun onCompleted(gestureDescription: GestureDescription?) {
-                if (passThrough) setTriggerTouchable(true)
+                if (passThrough) setTriggerTouchable(!previewOn)
             }
             override fun onCancelled(gestureDescription: GestureDescription?) {
-                if (passThrough) setTriggerTouchable(true)
+                if (passThrough) setTriggerTouchable(!previewOn)
             }
         }
         val ok = dispatchGesture(gesture, cb, handler)
-        if (!ok && passThrough) setTriggerTouchable(true)
+        if (!ok && passThrough) setTriggerTouchable(!previewOn)
     }
 }

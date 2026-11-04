@@ -179,7 +179,7 @@ private fun Screen(
             }
             SwitchRow("触れる範囲を常にうっすら表示", st.showArea) { update(st.copy(showArea = it)) }
             Text(
-                "※ この設定画面を開いている間は、触れる範囲を枠付きで濃く表示します",
+                "※ この設定画面を開いている間は、触れる範囲を枠付きで濃く表示します（触っても反応しません）",
                 color = TextSub, fontSize = 12.sp
             )
             SliderRow("太さ（触れる幅）", st.triggerWidthDp.toFloat(), 8f..48f, "${st.triggerWidthDp}dp") {
@@ -243,11 +243,11 @@ private fun Screen(
             }
         }
 
-        Card(title = "テストエリア") {
-            Text("カーソルで下のボタンを押して動作確認", color = TextSub, fontSize = 12.sp)
-            Spacer(Modifier.height(8.dp))
-            TestButtons()
-        }
+        Text(
+            "※ この画面を開いている間はトリガーが反応しません（設定中の誤タップ防止）。" +
+                "動作確認はホームや他のアプリで行ってください。",
+            color = TextSub, fontSize = 12.sp, lineHeight = 18.sp
+        )
 
         Card(title = "アップデート") {
             Text("現在のバージョン：$version", color = TextSub, fontSize = 12.sp)
