@@ -88,6 +88,12 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         serviceOn.value = isServiceEnabled()
+        CursorService.setPreview(true)   // 設定画面を開いている間は触れる範囲をはっきり表示
+    }
+
+    override fun onPause() {
+        CursorService.setPreview(false)
+        super.onPause()
     }
 
     private fun isServiceEnabled(): Boolean {
@@ -115,7 +121,13 @@ private fun Screen(
             .padding(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text("OneTouch Cursor", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("OneTouch Cursor", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("v$version", color = TextSub, fontSize = 12.sp)
+            }
+            Button(onClick = openUpdate) { Text("UPDATE") }
+        }
         Text("画面端の帯を長押し→スワイプでカーソル、離した位置をタップ", color = TextSub, fontSize = 13.sp)
 
         // ── 状態 ──
@@ -166,6 +178,11 @@ private fun Screen(
             SliderRow("長さ", st.triggerLengthDp.toFloat(), 60f..500f, "${st.triggerLengthDp}dp") {
                 update(st.copy(triggerLengthDp = it.toInt()))
             }
+            SwitchRow("触れる範囲を常にうっすら表示", st.showArea) { update(st.copy(showArea = it)) }
+            Text(
+                "※ この設定画面を開いている間は、触れる範囲を枠付きで濃く表示します",
+                color = TextSub, fontSize = 12.sp
+            )
             SliderRow("太さ（触れる幅）", st.triggerWidthDp.toFloat(), 8f..48f, "${st.triggerWidthDp}dp") {
                 update(st.copy(triggerWidthDp = it.toInt()))
             }

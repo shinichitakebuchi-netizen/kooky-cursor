@@ -27,6 +27,19 @@ class CursorService : AccessibilityService(),
     SharedPreferences.OnSharedPreferenceChangeListener,
     TriggerView.Listener {
 
+    companion object {
+        private var instance: CursorService? = null
+        private var previewOn = false
+
+        /** 設定画面の表示中だけ、触れる範囲を濃く表示する（同じアプリ内からの呼び出し） */
+        fun setPreview(on: Boolean) {
+            previewOn = on
+            instance?.let { svc ->
+                svc.trigger?.let { it.preview = on; it.alpha = svc.triggerAlpha(); it.invalidate() }
+            }
+        }
+    }
+
     private lateinit var wm: WindowManager
     private lateinit var prefs: SharedPreferences
     private val handler = Handler(Looper.getMainLooper())
@@ -49,6 +62,7 @@ class CursorService : AccessibilityService(),
         prefs = Settings.prefs(this)
         prefs.registerOnSharedPreferenceChangeListener(this)
         s = Settings.load(prefs)
+        instance = this
         updateScreenSize()
         addCursorWindow()
         addTriggerWindow()
@@ -61,6 +75,7 @@ class CursorService : AccessibilityService(),
     override fun onDestroy() {
         if (::prefs.isInitialized) prefs.unregisterOnSharedPreferenceChangeListener(this)
         handler.removeCallbacksAndMessages(null)
+        if (instance === this) instance = null
         listOf<View?>(cursorView, trigger).forEach { v ->
             v?.let { runCatching { wm.removeView(it) } }
         }
@@ -141,12 +156,14 @@ class CursorService : AccessibilityService(),
         }
         trigger?.apply {
             visibility = if (s.enabled) View.VISIBLE else View.GONE
-            alpha = (1f - s.triggerTransparency / 100f).coerceIn(0.05f, 1f)
+            alpha = triggerAlpha()
             holdMs = s.holdMs.toLong()
             speed = s.speed
             cancelOnReturn = s.cancelOnReturn
             rightEdge = s.rightEdge
             barColor = s.triggerColor
+            showArea = s.showArea
+            preview = previewOn
             invalidate()
         }
         cursorView?.apply {
@@ -155,6 +172,10 @@ class CursorService : AccessibilityService(),
             invalidate()
         }
     }
+
+    /** 設定画面を開いている間は透明度に関係なく見えるようにする */
+    private fun triggerAlpha(): Float =
+        if (previewOn) 1f else (1f - s.triggerTransparency / 100f).coerceIn(0.05f, 1f)
 
     // ───────── TriggerView.Listener ─────────
 

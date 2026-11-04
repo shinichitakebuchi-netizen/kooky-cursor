@@ -36,6 +36,8 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
     var cancelOnReturn = true
     var rightEdge = true
     var barColor = 0xFFFF8A2B.toInt()
+    var showArea = true      // 触れる範囲を常にうっすら表示
+    var preview = false      // 設定画面を開いている間は枠付きで濃く表示
 
     private val density = resources.displayMetrics.density
     private val handler = Handler(Looper.getMainLooper())
@@ -56,6 +58,12 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
     }
 
     private val barPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val areaPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        pathEffect = android.graphics.DashPathEffect(floatArrayOf(10f, 8f), 0f)
+    }
+    private val areaRect = RectF()
     private val barRect = RectF()
     private val loc = IntArray(2)
 
@@ -66,6 +74,24 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
     }
 
     override fun onDraw(canvas: Canvas) {
+        // 触れる範囲（View全体）
+        val r = 6f * density
+        areaRect.set(0f, 0f, width.toFloat(), height.toFloat())
+        if (preview || showArea || active) {
+            areaPaint.color = barColor
+            areaPaint.alpha = when {
+                preview -> 90
+                active -> 60
+                else -> 28
+            }
+            canvas.drawRoundRect(areaRect, r, r, areaPaint)
+        }
+        if (preview) {
+            borderPaint.color = barColor
+            borderPaint.strokeWidth = 1.5f * density
+            areaRect.inset(borderPaint.strokeWidth / 2, borderPaint.strokeWidth / 2)
+            canvas.drawRoundRect(areaRect, r, r, borderPaint)
+        }
         // 見た目は細い帯（触れる範囲はView全体）
         val barW = (if (active) 6f else 4f) * density
         val left = if (rightEdge) width - barW - 2f * density else 2f * density

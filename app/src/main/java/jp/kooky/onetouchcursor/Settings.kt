@@ -14,6 +14,7 @@ data class Settings(
     val triggerTransparency: Int = 40,    // 0%=不透明 / 100%=完全に透明
     val holdMs: Int = 250,                // 長押し判定の時間
     val enabled: Boolean = true,          // トリガー表示 ON/OFF
+    val showArea: Boolean = true,         // 触れる範囲を常にうっすら表示
 
     // ── カーソル ──
     val speed: Float = 2.5f,              // 0.5〜5.0
@@ -34,6 +35,7 @@ data class Settings(
             .putInt(K_TTRANS, triggerTransparency)
             .putInt(K_HOLD, holdMs)
             .putBoolean(K_ENABLED, enabled)
+            .putBoolean(K_AREA, showArea)
             .putFloat(K_SPEED, speed)
             .putInt(K_SIZE, cursorSize)
             .putInt(K_COLOR, cursorColor)
@@ -52,6 +54,7 @@ data class Settings(
         const val K_TTRANS = "trigger_trans"
         const val K_HOLD = "hold_ms"
         const val K_ENABLED = "enabled"
+        const val K_AREA = "show_area"
         const val K_SPEED = "speed"
         const val K_SIZE = "cursor_size"
         const val K_COLOR = "cursor_color"
@@ -72,6 +75,7 @@ data class Settings(
                 triggerTransparency = p.getInt(K_TTRANS, d.triggerTransparency),
                 holdMs = p.getInt(K_HOLD, d.holdMs),
                 enabled = p.getBoolean(K_ENABLED, d.enabled),
+                showArea = p.getBoolean(K_AREA, d.showArea),
                 speed = p.getFloat(K_SPEED, d.speed),
                 cursorSize = p.getInt(K_SIZE, d.cursorSize),
                 cursorColor = p.getInt(K_COLOR, d.cursorColor),
