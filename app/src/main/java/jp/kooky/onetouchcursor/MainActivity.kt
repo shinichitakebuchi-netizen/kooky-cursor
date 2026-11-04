@@ -118,8 +118,9 @@ private fun Screen(
             .fillMaxSize()
             .background(Navy)
             .systemBarsPadding()   // ステータスバー・ナビバーと重ならないように
+            .windowInsetsPadding(WindowInsets.safeDrawing)   // ステータスバー・ナビバーと重ならない
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 20.dp),
+            .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Column {
@@ -208,6 +209,30 @@ private fun Screen(
             }
             Label("色")
             ColorPicker(st.cursorColor) { update(st.copy(cursorColor = it)) }
+
+            Label("出てくる位置")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Choice("指の近く", !st.startFixed) { update(st.copy(startFixed = false)) }
+                Choice("画面の決まった位置", st.startFixed) { update(st.copy(startFixed = true)) }
+            }
+            if (!st.startFixed) {
+                SliderRow(
+                    "指から内側へ", st.startOffsetXDp.toFloat(), 0f..300f, "${st.startOffsetXDp}dp"
+                ) { update(st.copy(startOffsetXDp = it.toInt())) }
+                SliderRow(
+                    "指から上へ（マイナス=下へ）", st.startOffsetYDp.toFloat(), -200f..400f,
+                    "${st.startOffsetYDp}dp"
+                ) { update(st.copy(startOffsetYDp = it.toInt())) }
+            } else {
+                SliderRow(
+                    "横（0%=左端 / 100%=右端）", st.startXPercent.toFloat(), 0f..100f,
+                    "${st.startXPercent}%"
+                ) { update(st.copy(startXPercent = it.toInt())) }
+                SliderRow(
+                    "縦（0%=上端 / 100%=下端）", st.startYPercent.toFloat(), 0f..100f,
+                    "${st.startYPercent}%"
+                ) { update(st.copy(startYPercent = it.toInt())) }
+            }
         }
 
         // ── 操作 ──

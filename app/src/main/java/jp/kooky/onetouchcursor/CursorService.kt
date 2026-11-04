@@ -180,10 +180,16 @@ class CursorService : AccessibilityService(),
     // ───────── TriggerView.Listener ─────────
 
     override fun showCursorNear(rawX: Float, rawY: Float) {
-        // 指の少し内側・上に出す（指で隠れないように）
-        val inward = dp(70).toFloat()
-        cx = if (s.rightEdge) rawX - inward else rawX + inward
-        cy = rawY - dp(40).toFloat()
+        if (s.startFixed) {
+            // 画面の決まった位置
+            cx = screenW * s.startXPercent / 100f
+            cy = screenH * s.startYPercent / 100f
+        } else {
+            // 指の近く（内側へ startOffsetX、上へ startOffsetY）
+            val inward = dp(s.startOffsetXDp).toFloat()
+            cx = if (s.rightEdge) rawX - inward else rawX + inward
+            cy = rawY - dp(s.startOffsetYDp).toFloat()
+        }
         clampCursor()
         cursorView?.apply {
             active = true

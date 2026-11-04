@@ -20,6 +20,12 @@ data class Settings(
     val speed: Float = 2.5f,              // 0.5〜5.0
     val cursorSize: Int = 1,              // 0=小 1=中 2=大
     val cursorColor: Int = 0xFFFF8A2B.toInt(),
+    // カーソルの初期位置
+    val startFixed: Boolean = false,      // false=指の近く / true=画面の決まった位置
+    val startOffsetXDp: Int = 70,         // 指の近く：指から内側へ
+    val startOffsetYDp: Int = 40,         // 指の近く：指から上へ（マイナスで下）
+    val startXPercent: Int = 50,          // 決まった位置：左端=0% / 右端=100%
+    val startYPercent: Int = 40,          // 決まった位置：上端=0% / 下端=100%
 
     // ── 操作 ──
     val vibrate: Boolean = true,
@@ -39,6 +45,11 @@ data class Settings(
             .putFloat(K_SPEED, speed)
             .putInt(K_SIZE, cursorSize)
             .putInt(K_COLOR, cursorColor)
+            .putBoolean(K_SFIXED, startFixed)
+            .putInt(K_SOX, startOffsetXDp)
+            .putInt(K_SOY, startOffsetYDp)
+            .putInt(K_SXP, startXPercent)
+            .putInt(K_SYP, startYPercent)
             .putBoolean(K_VIB, vibrate)
             .putBoolean(K_CANCEL, cancelOnReturn)
             .apply()
@@ -58,6 +69,11 @@ data class Settings(
         const val K_SPEED = "speed"
         const val K_SIZE = "cursor_size"
         const val K_COLOR = "cursor_color"
+        const val K_SFIXED = "start_fixed"
+        const val K_SOX = "start_offset_x"
+        const val K_SOY = "start_offset_y"
+        const val K_SXP = "start_x_pct"
+        const val K_SYP = "start_y_pct"
         const val K_VIB = "vibrate"
         const val K_CANCEL = "cancel_on_return"
 
@@ -79,6 +95,11 @@ data class Settings(
                 speed = p.getFloat(K_SPEED, d.speed),
                 cursorSize = p.getInt(K_SIZE, d.cursorSize),
                 cursorColor = p.getInt(K_COLOR, d.cursorColor),
+                startFixed = p.getBoolean(K_SFIXED, d.startFixed),
+                startOffsetXDp = p.getInt(K_SOX, d.startOffsetXDp),
+                startOffsetYDp = p.getInt(K_SOY, d.startOffsetYDp),
+                startXPercent = p.getInt(K_SXP, d.startXPercent),
+                startYPercent = p.getInt(K_SYP, d.startYPercent),
                 vibrate = p.getBoolean(K_VIB, d.vibrate),
                 cancelOnReturn = p.getBoolean(K_CANCEL, d.cancelOnReturn),
             )
