@@ -34,6 +34,9 @@ private val Orange = Color(0xFFFF8A2B)
 private val Blue = Color(0xFF3D8BFF)
 private val TextSub = Color(0xFF9AA6BF)
 
+private const val RELEASES_URL =
+    "https://github.com/shinichitakebuchi-netizen/kooky-cursor/releases/latest"
+
 class MainActivity : ComponentActivity() {
 
     private val serviceOn = mutableStateOf(false)
@@ -60,6 +63,15 @@ class MainActivity : ComponentActivity() {
                     openA11y = {
                         startActivity(Intent(AndroidSettings.ACTION_ACCESSIBILITY_SETTINGS))
                     },
+                    openUpdate = {
+                        startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(RELEASES_URL))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    },
+                    version = runCatching {
+                        packageManager.getPackageInfo(packageName, 0).versionName
+                    }.getOrNull() ?: "",
                     openAppInfo = {
                         startActivity(
                             Intent(
@@ -92,6 +104,8 @@ private fun Screen(
     serviceOn: Boolean,
     openA11y: () -> Unit,
     openAppInfo: () -> Unit,
+    openUpdate: () -> Unit,
+    version: String,
 ) {
     Column(
         Modifier
@@ -193,6 +207,19 @@ private fun Screen(
             Text("カーソルで下のボタンを押して動作確認", color = TextSub, fontSize = 12.sp)
             Spacer(Modifier.height(8.dp))
             TestButtons()
+        }
+
+        Card(title = "アップデート") {
+            Text("現在のバージョン：$version", color = TextSub, fontSize = 12.sp)
+            Spacer(Modifier.height(8.dp))
+            Button(onClick = openUpdate, modifier = Modifier.fillMaxWidth()) {
+                Text("UPDATE（最新版をダウンロード）")
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "開いたページの app-debug.apk をダウンロード → 開いて上書きインストール",
+                color = TextSub, fontSize = 12.sp
+            )
         }
 
         Spacer(Modifier.height(40.dp))

@@ -26,18 +26,16 @@ jobs:
       - name: Build
         run: gradle assembleDebug --no-daemon --stacktrace
 
-      - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk OneTouchCursor.apk
-
       - uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
-          name: OneTouchCursor
-          path: OneTouchCursor.apk
+          name: kooky-cursor-debug
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 3
 
-      - name: Release
+      - name: Publish APK to Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: OneTouch Cursor build ${{ github.run_number }}
-          files: OneTouchCursor.apk
-          make_latest: true
+          tag_name: latest
+          name: Latest build
+          files: app/build/outputs/apk/debug/app-debug.apk

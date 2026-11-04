@@ -3,14 +3,12 @@
 画面端の縦長トリガーを長押し→スワイプでカーソルを出し、**指を離した位置をタップ**する片手操作アプリ。
 対象：Android 14 以降（Galaxy S26 想定）
 
-## ビルド手順（iPadのみ）
+## インストール・アップデート（ランチャー／キーボードと同じ流れ）
 
-1. GitHub で新しいリポジトリ（例：`kooky-cursor`）を作る
-2. この zip を展開した中身をそのままアップロード（`.github` フォルダと `keystore/debug.keystore` も必須）
-   - 隠しフォルダ `.github` がアップロードされない場合は、GitHub上で
-     `.github/workflows/build.yml` を「Add file → Create new file」で作り、中身を貼り付け
-3. Actions タブで「Build APK」が走る → 完了後 Releases に `OneTouchCursor.apk`
-4. Galaxy でダウンロードしてインストール
+1. mainにプッシュすると GitHub Actions が自動ビルド
+2. Releases の「Latest build」（タグ `latest`）に `app-debug.apk` が上書きされる
+3. 初回：Galaxyで https://github.com/shinichitakebuchi-netizen/kooky-cursor/releases/latest を開いて `app-debug.apk` をDL → インストール
+4. 2回目以降：アプリ内の「UPDATE」ボタン → 同じページが開く → DLして上書きインストール
 
 ## 初回セットアップ（Galaxy）
 
