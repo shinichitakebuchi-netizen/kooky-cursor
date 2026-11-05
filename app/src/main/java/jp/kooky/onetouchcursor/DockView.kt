@@ -20,7 +20,30 @@ class DockView(context: Context) : View(context) {
     companion object {
         const val HIT_NONE = -1
         const val HIT_HEADER = -2   // 上の「設定」ボタン（設置画面では位置調整のつまみ）
-        const val HIT_ADD = -3      // 設置画面の「＋」
+        const val HIT_ADD = -3      // 設置画面の「＋ 追加」
+
+        const val HEADER_DP = 30f
+        const val PAD_DP = 12f
+        const val MARGIN_DP = 8f
+
+        /** ドックの大きさ(px)。count=項目数 */
+        fun size(cols: Int, rows: Int, count: Int, cellDp: Float, d: Float): Pair<Float, Float> {
+            val cell = cellDp * d
+            val shownRows = if (count == 0) 1 else ((count + cols - 1) / cols).coerceAtMost(rows)
+            return (cols * cell + PAD_DP * d * 2) to (HEADER_DP * d + shownRows * cell + PAD_DP * d * 2)
+        }
+
+        /** ドックの左上(px) */
+        fun origin(
+            w: Float, h: Float, fromRight: Boolean, gapDp: Float, centerY: Float,
+            screenW: Int, screenH: Int, d: Float,
+        ): Pair<Float, Float> {
+            val gap = gapDp * d
+            val left = (if (fromRight) screenW - gap - w else gap).coerceIn(0f, (screenW - w).coerceAtLeast(0f))
+            val m = MARGIN_DP * d
+            val top = (centerY - h / 2).coerceIn(m, (screenH - h - m).coerceAtLeast(m))
+            return left to top
+        }
     }
 
     private val d = resources.displayMetrics.density
@@ -56,8 +79,8 @@ class DockView(context: Context) : View(context) {
     private var hovered = HIT_NONE
 
     private val cell get() = cellDp * d
-    private val pad get() = 12f * d
-    private val headerH get() = 30f * d
+    private val pad get() = PAD_DP * d
+    private val headerH get() = HEADER_DP * d
 
     private val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
@@ -74,16 +97,9 @@ class DockView(context: Context) : View(context) {
             if (!labels.containsKey(k)) labels[k] = DockItems.label(context, k) ?: "（不明）"
             if (!icons.containsKey(k)) icons[k] = DockItems.icon(context, k)
         }
-        // 設置画面では「＋」の分も含めて、並びの行数ぶん全部見せる
-        val count = if (editMode) (keys.size + 1).coerceAtMost(cap()) else keys.size
-        val shownRows = if (count == 0) 1 else ((count + cols - 1) / cols).coerceAtMost(rows)
-        val w = cols * cell + pad * 2
-        val h = headerH + shownRows * cell + pad * 2
-        val gap = gapDp * d
-        val left = (if (fromRight) screenW - gap - w else gap).coerceIn(0f, (screenW - w).coerceAtLeast(0f))
+        val (w, h) = size(cols, rows, keys.size, cellDp, d)
         val centerY = if (posFixed) screenH * posYPercent / 100f else rawY
-        val margin = 24f * d
-        val top = (centerY - h / 2).coerceIn(margin, (screenH - h - margin).coerceAtLeast(margin))
+        val (left, top) = origin(w, h, fromRight, gapDp, centerY, screenW, screenH, d)
         panel.set(left, top, left + w, top + h)
         hovered = HIT_NONE
         visibility = VISIBLE
@@ -111,11 +127,13 @@ class DockView(context: Context) : View(context) {
     /** 指の位置にあるもの：項目の番号 / HIT_HEADER / HIT_ADD / HIT_NONE */
     fun hit(x: Float, y: Float): Int {
         if (!panel.contains(x, y)) return HIT_NONE
-        if (y < panel.top + headerH) return HIT_HEADER
+        if (y < panel.top + headerH) {
+            // 設置画面：帯の右側は「＋ 追加」
+            if (editMode && keys.size < cap() && x > panel.right - 84f * d) return HIT_ADD
+            return HIT_HEADER
+        }
         val i = cellIndex(x, y)
-        if (i < 0) return HIT_NONE
-        if (i < keys.size) return i
-        if (editMode && i == keys.size && i < cap()) return HIT_ADD
+        if (i in keys.indices) return i
         return HIT_NONE
     }
 
@@ -176,14 +194,22 @@ class DockView(context: Context) : View(context) {
         canvas.drawLine(panel.left + pad, hb, panel.right - pad, hb, line.apply { color = cRikyu; strokeWidth = 0.6f * d })
         text.color = if (headOn) cTorinoko else cKame
         text.textSize = 11f * d
-        canvas.drawText(
-            if (editMode) "≡　ここをつまんで位置を動かす" else "⚙　設定",
-            panel.centerX(), panel.top + headerH / 2 + 4f * d, text
-        )
+        if (editMode) {
+            text.textAlign = Paint.Align.LEFT
+            canvas.drawText("≡ 項目は長押しで移動", panel.left + pad, panel.top + headerH / 2 + 4f * d, text)
+            if (keys.size < cap()) {
+                text.textAlign = Paint.Align.RIGHT
+                text.color = cBenihi
+                canvas.drawText("＋ 追加", panel.right - pad, panel.top + headerH / 2 + 4f * d, text)
+            }
+            text.textAlign = Paint.Align.CENTER
+        } else {
+            canvas.drawText("⚙　設定", panel.centerX(), panel.top + headerH / 2 + 4f * d, text)
+        }
 
-        if (keys.isEmpty() && !editMode) {
+        if (keys.isEmpty()) {
             text.color = cKame; text.textSize = 12f * d
-            canvas.drawText("⚙ から項目を追加", panel.centerX(), hb + (panel.bottom - hb) / 2 + 4f * d, text)
+            canvas.drawText(if (editMode) "右上の「＋ 追加」から項目を追加" else "⚙ から項目を追加", panel.centerX(), hb + (panel.bottom - hb) / 2 + 4f * d, text)
             return
         }
 
@@ -206,15 +232,6 @@ class DockView(context: Context) : View(context) {
             val (cx, top) = cellOrigin(slot)
             drawItem(canvas, keys[i], cx, top, i == hovered, k0)
             if (editMode) drawRemoveBadge(canvas, cx, top)
-        }
-
-        if (editMode && keys.size < cap()) {
-            val (cx, top) = cellOrigin(keys.size)
-            tmp.set(cx - cell / 2 + 6f * d, top + 6f * d, cx + cell / 2 - 6f * d, top + cell - 6f * d)
-            line.color = cRikyu; line.strokeWidth = 1f * d
-            canvas.drawRoundRect(tmp, 3f * d, 3f * d, line)
-            glyph.color = cKame; glyph.textSize = 22f * d
-            canvas.drawText("＋", cx, tmp.centerY() + 8f * d, glyph)
         }
 
         // 持ち上げた項目を指の位置に

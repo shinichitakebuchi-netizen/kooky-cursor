@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.layout.onSizeChanged
@@ -314,7 +315,6 @@ private fun Screen(
             update(st.copy(dockCellDp = it.toInt()))
         }
         ToggleRow("アプリ名を表示", st.dockLabels) { update(st.copy(dockLabels = it)) }
-        DockItemList(st, update, openPicker)
 
         // ── 操作 ──
         Section("操作")
@@ -801,8 +801,8 @@ private fun PickRow(key: String, label: String, selected: Boolean, onClick: () -
 /**
  * 実際のドックを画面に出して、その場で編集する。
  *  - 項目を長押し → 持ち上げて動かす → 離した所へ移動
- *  - 項目右上の「×」→ 外す ／「＋」→ 項目を追加
- *  - 上の帯をつまんで動かす → ドックの位置（高さ・端からの距離）
+ *  - 項目右上の「×」→ 外す ／ 帯の右「＋ 追加」→ 項目を追加
+ *  - 位置は「位置を調整する」で、画面全体を縮小した図の上で動かす
  */
 @Composable
 private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () -> Unit, close: () -> Unit) {
@@ -813,6 +813,12 @@ private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () 
     var dockRef by remember { mutableStateOf<DockView?>(null) }
     var size by remember { mutableStateOf(androidx.compose.ui.unit.IntSize(0, 0)) }
     var folded by remember { mutableStateOf(false) }
+    var overview by remember { mutableStateOf(false) }
+    if (overview) {
+        BackHandler { overview = false }
+        DockOverview(st, update) { overview = false }
+        return
+    }
     // 最新の設定を、ジェスチャーの中から参照するため
     val stNow by rememberUpdatedState(st)
 
@@ -848,29 +854,6 @@ private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () 
                         val down = awaitFirstDown()
                         val p0 = down.position
                         val hit0 = dock.hit(p0.x, p0.y)
-
-                        if (hit0 == DockView.HIT_HEADER) {
-                            // 上の帯をつまんで動かす → 位置調整
-                            val r0 = dock.panelRect()
-                            var cy = r0.centerY()
-                            var edgeGap = if (fromRight) size.width - r0.right else r0.left
-                            var last = p0
-                            while (true) {
-                                val ev = awaitPointerEvent()
-                                val c = ev.changes.firstOrNull { it.id == down.id } ?: break
-                                if (!c.pressed) break
-                                val dx = c.position.x - last.x
-                                val dy = c.position.y - last.y
-                                last = c.position
-                                c.consume()
-                                cy += dy
-                                edgeGap += if (fromRight) -dx else dx
-                                val yPct = (cy / size.height * 100f).toInt().coerceIn(0, 100)
-                                val gap = (edgeGap / density).toInt().coerceIn(0, 300)
-                                update(stNow.copy(dockFixed = true, dockYPercent = yPct, dockGapDp = gap))
-                            }
-                            return@awaitEachGesture
-                        }
 
                         // 長押しを待つ（その前に離したらタップ）
                         var up: PointerInputChange? = null
@@ -942,7 +925,9 @@ private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () 
             }
             if (!folded) {
                 Spacer(Modifier.height(6.dp))
-                Note("長押しで持ち上げて移動／「×」で外す／「＋」で追加／上の帯をつまんで位置を調整")
+                Note("長押しで持ち上げて移動／「×」で外す／右上の「＋ 追加」で追加")
+                Spacer(Modifier.height(12.dp))
+                Choice("位置を調整する（画面全体を見ながら）", true) { overview = true }
                 Label("出す高さ")
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Choice("指の高さ", !st.dockFixed) { update(st.copy(dockFixed = false)) }
@@ -960,5 +945,125 @@ private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () 
                 ToggleRow("アプリ名を表示", st.dockLabels) { update(st.copy(dockLabels = it)) }
             }
         }
+    }
+}
+
+// ───────── 位置の調整（画面全体を縮小して見る） ─────────
+
+@Composable
+private fun DockOverview(st: Settings, update: (Settings) -> Unit, close: () -> Unit) {
+    val ctx = LocalContext.current
+    val d = LocalDensity.current.density
+    val bounds = remember {
+        (ctx.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager)
+            .currentWindowMetrics.bounds
+    }
+    val sw = bounds.width()
+    val sh = bounds.height()
+    val fromRight = st.edgeMode != Settings.EDGE_LEFT
+    val count = DockItems.parse(st.dockItems).size.coerceAtMost(st.dockCols * st.dockRows)
+    val stNow by rememberUpdatedState(st)
+
+    // 指で動かしている途中の位置（px、実寸）
+    var centerY by remember { mutableFloatStateOf(sh * st.dockYPercent / 100f) }
+    var gapPx by remember { mutableFloatStateOf(st.dockGapDp * d) }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Sumi)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(horizontal = 28.dp)
+    ) {
+        Spacer(Modifier.height(20.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("位置の調整", color = Kinari, fontSize = 20.sp, fontFamily = Mincho, modifier = Modifier.weight(1f))
+            Choice("完了", true, onClick = close)
+        }
+        Spacer(Modifier.height(6.dp))
+        Note("画面全体を縮めて表示しています。ドックを指で動かして置き場所を決めてください。")
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "高さ ${st.dockYPercent}%　・　端から ${st.dockGapDp}dp" +
+                if (!st.dockFixed) "　（今は「指の高さ」なので高さは指に合わせて変わります）" else "",
+            color = Usuzumi, fontSize = 11.sp
+        )
+        Spacer(Modifier.height(12.dp))
+
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            val availW = constraints.maxWidth.toFloat()
+            val availH = constraints.maxHeight.toFloat()
+            val scale = minOf(availW / sw, availH / sh) * 0.95f
+            val fw = sw * scale
+            val fh = sh * scale
+
+            Canvas(
+                Modifier
+                    .size(width = (fw / d).dp, height = (fh / d).dp)
+                    .pointerInput(scale) {
+                        detectDragGestures(
+                            onDrag = { change, amount ->
+                                change.consume()
+                                centerY = (centerY + amount.y / scale).coerceIn(0f, sh.toFloat())
+                                gapPx = (gapPx + (if (fromRight) -amount.x else amount.x) / scale)
+                                    .coerceIn(0f, 300f * d)
+                                update(
+                                    stNow.copy(
+                                        dockFixed = true,
+                                        dockYPercent = (centerY / sh * 100f).toInt().coerceIn(0, 100),
+                                        dockGapDp = (gapPx / d).toInt().coerceIn(0, 300)
+                                    )
+                                )
+                            }
+                        )
+                    }
+            ) {
+                val r = 22f * d * scale * 2f
+                // 画面の枠
+                drawRoundRect(
+                    color = Color(0xFF1B3136),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r)
+                )
+                drawRoundRect(
+                    color = Line, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r)
+                )
+                // ホーム画面のアプリのイメージ（4列 × 6段の薄い四角）
+                val ic = fw / 4f
+                for (row in 0 until 6) for (col in 0 until 4) {
+                    val s0 = ic * 0.5f
+                    drawRoundRect(
+                        color = Line.copy(alpha = 0.35f),
+                        topLeft = Offset(col * ic + (ic - s0) / 2, fh * 0.12f + row * ic * 1.15f),
+                        size = androidx.compose.ui.geometry.Size(s0, s0),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(s0 * 0.25f, s0 * 0.25f)
+                    )
+                }
+                // 触れる帯
+                val bh = st.triggerLengthDp * d * scale
+                val by = (fh * st.triggerPosPercent / 100f - bh / 2).coerceIn(0f, (fh - bh).coerceAtLeast(0f))
+                if (st.rightOn) drawLine(Shu, Offset(fw - 3.dp.toPx(), by), Offset(fw - 3.dp.toPx(), by + bh), 3.dp.toPx())
+                if (st.leftOn) drawLine(Shu, Offset(3.dp.toPx(), by), Offset(3.dp.toPx(), by + bh), 3.dp.toPx())
+
+                // ドック（実寸で計算して縮小）
+                val (w, h) = DockView.size(st.dockCols, st.dockRows, count, st.dockCellDp.toFloat(), d)
+                val (left, top) = DockView.origin(w, h, fromRight, gapPx / d, centerY, sw, sh, d)
+                val tl = Offset(left * scale, top * scale)
+                val dsz = androidx.compose.ui.geometry.Size(w * scale, h * scale)
+                drawRect(Sumi, tl, dsz)
+                drawRect(Kinari, tl, dsz, style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+                // 上の帯とマス
+                val hh = DockView.HEADER_DP * d * scale
+                drawLine(Line, Offset(tl.x, tl.y + hh), Offset(tl.x + dsz.width, tl.y + hh), 1f)
+                val cell = st.dockCellDp * d * scale
+                val pad = DockView.PAD_DP * d * scale
+                for (i in 0 until count) {
+                    val cx = tl.x + pad + (i % st.dockCols) * cell + cell / 2
+                    val cy = tl.y + hh + pad + (i / st.dockCols) * cell + cell / 2
+                    drawCircle(Kinari.copy(alpha = 0.7f), radius = cell * 0.22f, center = Offset(cx, cy))
+                }
+            }
+        }
+        Spacer(Modifier.height(16.dp))
     }
 }
