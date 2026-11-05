@@ -6,7 +6,7 @@ import android.content.SharedPreferences
 /** 設定値。SharedPreferences に保存し、サービス側は変更を即時反映する。 */
 data class Settings(
     // ── トリガー ──
-    val rightEdge: Boolean = true,        // 右端 / 左端
+    val edgeMode: Int = EDGE_RIGHT,       // 0=左端 / 1=右端 / 2=両方
     val triggerPosPercent: Int = 55,      // トリガー中心の高さ（画面上端=0% / 下端=100%）
     val triggerLengthDp: Int = 180,       // トリガーの長さ
     val triggerWidthDp: Int = 20,         // トリガーの太さ（触れる幅）
@@ -32,9 +32,12 @@ data class Settings(
     val vibrate: Boolean = true,
     val cancelOnReturn: Boolean = true,   // トリガー上に指を戻して離すとキャンセル
 ) {
+    val leftOn get() = edgeMode == EDGE_LEFT || edgeMode == EDGE_BOTH
+    val rightOn get() = edgeMode == EDGE_RIGHT || edgeMode == EDGE_BOTH
+
     fun save(prefs: SharedPreferences) {
         prefs.edit()
-            .putBoolean(K_RIGHT, rightEdge)
+            .putInt(K_EDGE, edgeMode)
             .putInt(K_POS, triggerPosPercent)
             .putInt(K_LEN, triggerLengthDp)
             .putInt(K_WIDTH, triggerWidthDp)
@@ -59,7 +62,11 @@ data class Settings(
 
     companion object {
         const val PREFS_NAME = "onetouch_settings_v2"
-        const val K_RIGHT = "right_edge"
+        const val K_RIGHT = "right_edge"   // 旧設定（読み込みのみ）
+        const val K_EDGE = "edge_mode"
+        const val EDGE_LEFT = 0
+        const val EDGE_RIGHT = 1
+        const val EDGE_BOTH = 2
         const val K_POS = "trigger_pos"
         const val K_LEN = "trigger_len"
         const val K_WIDTH = "trigger_width"
@@ -86,7 +93,8 @@ data class Settings(
         fun load(p: SharedPreferences): Settings {
             val d = Settings()
             return Settings(
-                rightEdge = p.getBoolean(K_RIGHT, d.rightEdge),
+                edgeMode = if (p.contains(K_EDGE)) p.getInt(K_EDGE, d.edgeMode)
+                else if (p.getBoolean(K_RIGHT, true)) EDGE_RIGHT else EDGE_LEFT,
                 triggerPosPercent = p.getInt(K_POS, d.triggerPosPercent),
                 triggerLengthDp = p.getInt(K_LEN, d.triggerLengthDp),
                 triggerWidthDp = p.getInt(K_WIDTH, d.triggerWidthDp),

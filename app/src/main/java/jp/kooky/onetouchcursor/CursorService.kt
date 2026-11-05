@@ -35,7 +35,7 @@ class CursorService : AccessibilityService(),
         fun setPreview(on: Boolean) {
             previewOn = on
             instance?.let { svc ->
-                svc.trigger?.let { it.preview = on; it.alpha = svc.triggerAlpha(); it.invalidate() }
+                svc.triggers.forEach { (t, _) -> t.preview = on; t.alpha = svc.triggerAlpha(); t.invalidate() }
             }
         }
     }
@@ -51,8 +51,8 @@ class CursorService : AccessibilityService(),
     private var cy = 0f
 
     private var cursorView: CursorOverlayView? = null
-    private var trigger: TriggerView? = null
-    private var triggerParams: WindowManager.LayoutParams? = null
+    /** [0]=左端 / [1]=右端 のトリガー。表示するかは設定で切り替える */
+    private val triggers = ArrayList<Pair<TriggerView, WindowManager.LayoutParams>>()
 
     // ───────── ライフサイクル ─────────
 
@@ -65,7 +65,8 @@ class CursorService : AccessibilityService(),
         instance = this
         updateScreenSize()
         addCursorWindow()
-        addTriggerWindow()
+        addTriggerWindow(right = false)
+        addTriggerWindow(right = true)
         applySettings()
     }
 
@@ -76,9 +77,9 @@ class CursorService : AccessibilityService(),
         if (::prefs.isInitialized) prefs.unregisterOnSharedPreferenceChangeListener(this)
         handler.removeCallbacksAndMessages(null)
         if (instance === this) instance = null
-        listOf<View?>(cursorView, trigger).forEach { v ->
-            v?.let { runCatching { wm.removeView(it) } }
-        }
+        cursorView?.let { runCatching { wm.removeView(it) } }
+        triggers.forEach { (t, _) -> runCatching { wm.removeView(t) } }
+        triggers.clear()
         super.onDestroy()
     }
 
@@ -128,8 +129,8 @@ class CursorService : AccessibilityService(),
         cursorView = v
     }
 
-    private fun addTriggerWindow() {
-        val t = TriggerView(this, this)
+    private fun addTriggerWindow(right: Boolean) {
+        val t = TriggerView(this, this).apply { rightEdge = right }
         val lp = overlayParams(
             dp(s.triggerWidthDp), dp(s.triggerLengthDp),
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -137,34 +138,34 @@ class CursorService : AccessibilityService(),
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
         )
         wm.addView(t, lp)
-        trigger = t
-        triggerParams = lp
+        triggers.add(t to lp)
     }
 
     // ───────── 設定反映 ─────────
 
     private fun applySettings() {
         val h = dp(s.triggerLengthDp)
-        triggerParams?.let { lp ->
+        val center = screenH * s.triggerPosPercent / 100
+        triggers.forEach { (t, lp) ->
+            val right = t.rightEdge
             lp.width = dp(s.triggerWidthDp)
             lp.height = h
-            lp.gravity = Gravity.TOP or (if (s.rightEdge) Gravity.END else Gravity.START)
+            lp.gravity = Gravity.TOP or (if (right) Gravity.END else Gravity.START)
             lp.x = 0
-            val center = screenH * s.triggerPosPercent / 100
             lp.y = (center - h / 2).coerceIn(0, (screenH - h).coerceAtLeast(0))
-            trigger?.let { runCatching { wm.updateViewLayout(it, lp) } }
-        }
-        trigger?.apply {
-            visibility = if (s.enabled) View.VISIBLE else View.GONE
-            alpha = triggerAlpha()
-            holdMs = s.holdMs.toLong()
-            speed = s.speed
-            cancelOnReturn = s.cancelOnReturn
-            rightEdge = s.rightEdge
-            barColor = s.triggerColor
-            showArea = s.showArea
-            preview = previewOn
-            invalidate()
+            runCatching { wm.updateViewLayout(t, lp) }
+            t.apply {
+                val on = s.enabled && (if (right) s.rightOn else s.leftOn)
+                visibility = if (on) View.VISIBLE else View.GONE
+                alpha = triggerAlpha()
+                holdMs = s.holdMs.toLong()
+                speed = s.speed
+                cancelOnReturn = s.cancelOnReturn
+                barColor = s.triggerColor
+                showArea = s.showArea
+                preview = previewOn
+                invalidate()
+            }
         }
         cursorView?.apply {
             radiusDp = when (s.cursorSize) { 0 -> 9f; 2 -> 20f; else -> 14f }
@@ -180,7 +181,7 @@ class CursorService : AccessibilityService(),
 
     // ───────── TriggerView.Listener ─────────
 
-    override fun showCursorNear(rawX: Float, rawY: Float) {
+    override fun showCursorNear(rawX: Float, rawY: Float, fromRight: Boolean) {
         if (s.startFixed) {
             // 画面の決まった位置
             cx = screenW * s.startXPercent / 100f
@@ -188,7 +189,7 @@ class CursorService : AccessibilityService(),
         } else {
             // 指の近く（内側へ startOffsetX、上へ startOffsetY）
             val inward = dp(s.startOffsetXDp).toFloat()
-            cx = if (s.rightEdge) rawX - inward else rawX + inward
+            cx = if (fromRight) rawX - inward else rawX + inward
             cy = rawY - dp(s.startOffsetYDp).toFloat()
         }
         clampCursor()
@@ -235,23 +236,24 @@ class CursorService : AccessibilityService(),
     // ───────── タップ送信 ─────────
 
     private fun pointInTrigger(x: Float, y: Float): Boolean {
-        val t = trigger ?: return false
-        if (t.visibility != View.VISIBLE) return false
         val loc = IntArray(2)
-        t.getLocationOnScreen(loc)
-        return x >= loc[0] && x <= loc[0] + t.width && y >= loc[1] && y <= loc[1] + t.height
+        return triggers.any { (t, _) ->
+            if (t.visibility != View.VISIBLE) return@any false
+            t.getLocationOnScreen(loc)
+            x >= loc[0] && x <= loc[0] + t.width && y >= loc[1] && y <= loc[1] + t.height
+        }
     }
 
     /** トリガー自身の上をタップするとき、送ったタップを受け取らないよう一時的に透過させる */
     private fun setTriggerTouchable(touchable: Boolean) {
-        val lp = triggerParams ?: return
-        val t = trigger ?: return
-        lp.flags = if (touchable) {
-            lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-        } else {
-            lp.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        triggers.forEach { (t, lp) ->
+            lp.flags = if (touchable) {
+                lp.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+            } else {
+                lp.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+            }
+            runCatching { wm.updateViewLayout(t, lp) }
         }
-        runCatching { wm.updateViewLayout(t, lp) }
     }
 
     private fun tapAt(x: Float, y: Float) {

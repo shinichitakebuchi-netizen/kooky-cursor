@@ -169,8 +169,9 @@ private fun Screen(
             SwitchRow("トリガーを表示", st.enabled) { update(st.copy(enabled = it)) }
             Label("置く場所")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Choice("左端", !st.rightEdge) { update(st.copy(rightEdge = false)) }
-                Choice("右端", st.rightEdge) { update(st.copy(rightEdge = true)) }
+                Choice("左端", st.edgeMode == Settings.EDGE_LEFT) { update(st.copy(edgeMode = Settings.EDGE_LEFT)) }
+                Choice("右端", st.edgeMode == Settings.EDGE_RIGHT) { update(st.copy(edgeMode = Settings.EDGE_RIGHT)) }
+                Choice("両方", st.edgeMode == Settings.EDGE_BOTH) { update(st.copy(edgeMode = Settings.EDGE_BOTH)) }
             }
             SliderRow(
                 "上下の位置（0%=上端 / 100%=下端）",

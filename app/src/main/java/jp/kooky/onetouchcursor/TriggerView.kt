@@ -24,7 +24,7 @@ import kotlin.math.hypot
 class TriggerView(context: Context, private val listener: Listener) : View(context) {
 
     interface Listener {
-        fun showCursorNear(rawX: Float, rawY: Float)
+        fun showCursorNear(rawX: Float, rawY: Float, fromRight: Boolean)
         fun moveCursor(dx: Float, dy: Float)
         fun release(rawX: Float, rawY: Float, cancelled: Boolean)
         fun abort()
@@ -53,7 +53,7 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
     private val holdRunnable = Runnable {
         active = true
         listener.haptic(true)
-        listener.showCursorNear(lastRawX, lastRawY)
+        listener.showCursorNear(lastRawX, lastRawY, rightEdge)
         invalidate()
     }
 
