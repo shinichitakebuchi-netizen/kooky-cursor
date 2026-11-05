@@ -162,6 +162,7 @@ class CursorService : AccessibilityService(),
                 speed = s.speed
                 cancelOnReturn = s.cancelOnReturn
                 barColor = s.triggerColor
+                barStyle = s.barStyle
                 showArea = s.showArea
                 preview = previewOn
                 invalidate()

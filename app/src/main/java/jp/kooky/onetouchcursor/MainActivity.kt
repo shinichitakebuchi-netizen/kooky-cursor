@@ -175,6 +175,8 @@ private fun Screen(
             Choice("右", st.edgeMode == Settings.EDGE_RIGHT) { update(st.copy(edgeMode = Settings.EDGE_RIGHT)) }
             Choice("両方", st.edgeMode == Settings.EDGE_BOTH) { update(st.copy(edgeMode = Settings.EDGE_BOTH)) }
         }
+        Label("形")
+        BarPicker(st.barStyle, st.triggerColor) { update(st.copy(barStyle = it)) }
         SliderRow("上下の位置", st.triggerPosPercent.toFloat(), 0f..100f, "${st.triggerPosPercent}%") {
             update(st.copy(triggerPosPercent = it.toInt()))
         }
@@ -358,6 +360,43 @@ private fun Choice(text: String, selected: Boolean, onClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Text(text, color = if (selected) Sumi else Kinari, fontSize = 14.sp)
+    }
+}
+
+@Composable
+private fun BarPicker(current: Int, color: Int, onPick: (Int) -> Unit) {
+    val items = BarStyles.names.indices.toList()
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.chunked(4).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                row.forEach { i ->
+                    val selected = i == current
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .border(1.dp, if (selected) Kinari else Line, RoundedCornerShape(2.dp))
+                            .clickable { onPick(i) }
+                            .padding(vertical = 10.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Canvas(Modifier.size(width = 30.dp, height = 70.dp)) {
+                            drawIntoCanvas {
+                                BarStyles.draw(
+                                    it.nativeCanvas, size.width / 2, 0f, size.height,
+                                    i, color, false, density
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            BarStyles.names[i], color = if (selected) Kinari else Usuzumi,
+                            fontSize = 10.sp, maxLines = 1
+                        )
+                    }
+                }
+                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
     }
 }
 

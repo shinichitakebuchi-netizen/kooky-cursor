@@ -11,6 +11,7 @@ data class Settings(
     val triggerLengthDp: Int = 180,       // トリガーの長さ
     val triggerWidthDp: Int = 20,         // トリガーの太さ（触れる幅）
     val triggerColor: Int = 0xFFE0632F.toInt(),
+    val barStyle: Int = 0,                // BarStyles の番号
     val triggerTransparency: Int = 40,    // 0%=不透明 / 100%=完全に透明
     val holdMs: Int = 250,                // 長押し判定の時間
     val enabled: Boolean = true,          // トリガー表示 ON/OFF
@@ -42,6 +43,7 @@ data class Settings(
             .putInt(K_LEN, triggerLengthDp)
             .putInt(K_WIDTH, triggerWidthDp)
             .putInt(K_TCOLOR, triggerColor)
+            .putInt(K_BAR, barStyle)
             .putInt(K_TTRANS, triggerTransparency)
             .putInt(K_HOLD, holdMs)
             .putBoolean(K_ENABLED, enabled)
@@ -71,6 +73,7 @@ data class Settings(
         const val K_LEN = "trigger_len"
         const val K_WIDTH = "trigger_width"
         const val K_TCOLOR = "trigger_color"
+        const val K_BAR = "bar_style"
         const val K_TTRANS = "trigger_trans"
         const val K_HOLD = "hold_ms"
         const val K_ENABLED = "enabled"
@@ -99,6 +102,7 @@ data class Settings(
                 triggerLengthDp = p.getInt(K_LEN, d.triggerLengthDp),
                 triggerWidthDp = p.getInt(K_WIDTH, d.triggerWidthDp),
                 triggerColor = p.getInt(K_TCOLOR, d.triggerColor),
+                barStyle = p.getInt(K_BAR, d.barStyle),
                 triggerTransparency = p.getInt(K_TTRANS, d.triggerTransparency),
                 holdMs = p.getInt(K_HOLD, d.holdMs),
                 enabled = p.getBoolean(K_ENABLED, d.enabled),

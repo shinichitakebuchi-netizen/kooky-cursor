@@ -35,7 +35,8 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
     var speed = 2.5f
     var cancelOnReturn = true
     var rightEdge = true
-    var barColor = 0xFFFF8A2B.toInt()
+    var barColor = 0xFFE0632F.toInt()
+    var barStyle = BarStyles.LINE
     var showArea = true      // 触れる範囲を常にうっすら表示
     var preview = false      // 設定画面を開いている間は枠付きで濃く表示
 
@@ -92,12 +93,13 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
             areaRect.inset(borderPaint.strokeWidth / 2, borderPaint.strokeWidth / 2)
             canvas.drawRoundRect(areaRect, r, r, borderPaint)
         }
-        // 見た目は細い帯（触れる範囲はView全体）
-        val barW = (if (active) 6f else 4f) * density
-        val left = if (rightEdge) width - barW - 2f * density else 2f * density
-        barRect.set(left, 4f * density, left + barW, height - 4f * density)
-        barPaint.color = barColor
-        canvas.drawRoundRect(barRect, barW / 2, barW / 2, barPaint)
+        // 見た目の帯（触れる範囲はView全体）。端から少し内側に描く
+        val inset = 7f * density
+        val cx = (if (rightEdge) width - inset else inset).coerceIn(0f, width.toFloat())
+        BarStyles.draw(
+            canvas, cx, 4f * density, height - 4f * density,
+            barStyle, barColor, active, density
+        )
     }
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
