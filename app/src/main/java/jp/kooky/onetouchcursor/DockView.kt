@@ -69,7 +69,7 @@ class DockView(context: Context) : View(context) {
     var gapDp = 36f           // 端からの距離
 
     // 設置画面用
-    var editMode = false
+    var editMode = false      // true のとき、渡された範囲の中央に置き、座標はView内の座標として扱う
     var dragFrom = -1         // 持ち上げている項目
     var dragX = 0f
     var dragY = 0f
@@ -98,8 +98,12 @@ class DockView(context: Context) : View(context) {
             if (!icons.containsKey(k)) icons[k] = DockItems.icon(context, k)
         }
         val (w, h) = size(cols, rows, keys.size, cellDp, d)
-        val centerY = if (posFixed) screenH * posYPercent / 100f else rawY
-        val (left, top) = origin(w, h, fromRight, gapDp, centerY, screenW, screenH, d)
+        val (left, top) = if (editMode) {
+            ((screenW - w) / 2).coerceAtLeast(0f) to ((screenH - h) / 2).coerceAtLeast(MARGIN_DP * d)
+        } else {
+            val centerY = if (posFixed) screenH * posYPercent / 100f else rawY
+            origin(w, h, fromRight, gapDp, centerY, screenW, screenH, d)
+        }
         panel.set(left, top, left + w, top + h)
         hovered = HIT_NONE
         visibility = VISIBLE
@@ -167,9 +171,11 @@ class DockView(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         // panel はスクリーン座標なので、Viewの画面上の位置だけずらして描く
-        getLocationOnScreen(loc)
         canvas.save()
-        canvas.translate(-loc[0].toFloat(), -loc[1].toFloat())
+        if (!editMode) {
+            getLocationOnScreen(loc)
+            canvas.translate(-loc[0].toFloat(), -loc[1].toFloat())
+        }
         drawPanel(canvas)
         canvas.restore()
     }

@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val serviceOn = mutableStateOf(false)
-    /** 表示中の画面："main" / "editor"（ドックの設置） / "picker"（項目の追加） */
+    /** 表示中の画面："main" / "editor"（ドックの中身） / "overview"（ドックの設置） / "picker"（項目の追加） */
     private val page = mutableStateOf("main")
     private var pickerBack = "main"
 
@@ -110,6 +110,11 @@ class MainActivity : ComponentActivity() {
                         DockPicker(st, update) { page.value = pickerBack }
                         return@MaterialTheme
                     }
+                    "overview" -> {
+                        BackHandler { page.value = "main" }
+                        DockOverview(st, update) { page.value = "main" }
+                        return@MaterialTheme
+                    }
                     "editor" -> {
                         BackHandler { page.value = "main" }
                         DockEditor(
@@ -123,6 +128,7 @@ class MainActivity : ComponentActivity() {
                 Screen(
                     openPicker = { pickerBack = "main"; page.value = "picker" },
                     openEditor = { page.value = "editor" },
+                    openOverview = { page.value = "overview" },
                     st = st,
                     update = update,
                     serviceOn = serviceOn.value,
@@ -173,6 +179,7 @@ class MainActivity : ComponentActivity() {
 private fun Screen(
     openPicker: () -> Unit,
     openEditor: () -> Unit,
+    openOverview: () -> Unit,
     st: Settings,
     update: (Settings) -> Unit,
     serviceOn: Boolean,
@@ -296,25 +303,11 @@ private fun Screen(
         Note("帯を長押しせずにそのまま滑らせるとドックが出ます。項目の上で指を離すと起動します。")
         ToggleRow("滑らせてドックを出す", st.dockEnabled) { update(st.copy(dockEnabled = it)) }
         Spacer(Modifier.height(14.dp))
-        Choice("ドックを設置する（見ながら追加・移動・位置調整）", true, onClick = openEditor)
-        Spacer(Modifier.height(4.dp))
-        Note("ドックの上の「⚙ 設定」で指を離しても、この設置画面が開きます。")
-        Label("並び（横 × 縦）")
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            listOf(3, 4, 5).forEach { c ->
-                Choice("横$c", st.dockCols == c) { update(st.copy(dockCols = c)) }
-            }
-        }
+        Choice("ドックを設置する（画面全体を見ながら位置を決める）", true, onClick = openOverview)
         Spacer(Modifier.height(10.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            listOf(2, 3, 4, 5, 6).forEach { r ->
-                Choice("縦$r", st.dockRows == r) { update(st.copy(dockRows = r)) }
-            }
-        }
-        SliderRow("大きさ", st.dockCellDp.toFloat(), 52f..110f, "${st.dockCellDp}dp") {
-            update(st.copy(dockCellDp = it.toInt()))
-        }
-        ToggleRow("アプリ名を表示", st.dockLabels) { update(st.copy(dockLabels = it)) }
+        Choice("ドックの中身（アプリの追加・並び・大きさ）", false, onClick = openEditor)
+        Spacer(Modifier.height(4.dp))
+        Note("ドックの上の「⚙ 設定」で指を離すと、ドックの中身の画面が開きます。")
 
         // ── 操作 ──
         Section("操作")
@@ -796,154 +789,134 @@ private fun PickRow(key: String, label: String, selected: Boolean, onClick: () -
     }
 }
 
-// ───────── ドックの設置画面 ─────────
+// ───────── ドックの中身の画面 ─────────
 
 /**
- * 実際のドックを画面に出して、その場で編集する。
+ * 上にドック、下に設定。ドックの中身（アプリ）と見た目を整える画面。
  *  - 項目を長押し → 持ち上げて動かす → 離した所へ移動
  *  - 項目右上の「×」→ 外す ／ 帯の右「＋ 追加」→ 項目を追加
- *  - 位置は「位置を調整する」で、画面全体を縮小した図の上で動かす
+ * ドックを置く場所は「設置」（画面全体を縮小した図）で決める。
  */
 @Composable
 private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () -> Unit, close: () -> Unit) {
     val haptic = LocalHapticFeedback.current
-    val density = LocalDensity.current.density
     val items = DockItems.parse(st.dockItems)
-    val fromRight = st.edgeMode != Settings.EDGE_LEFT
     var dockRef by remember { mutableStateOf<DockView?>(null) }
-    var size by remember { mutableStateOf(androidx.compose.ui.unit.IntSize(0, 0)) }
-    var folded by remember { mutableStateOf(false) }
-    var overview by remember { mutableStateOf(false) }
-    if (overview) {
-        BackHandler { overview = false }
-        DockOverview(st, update) { overview = false }
-        return
-    }
-    // 最新の設定を、ジェスチャーの中から参照するため
+    var area by remember { mutableStateOf(androidx.compose.ui.unit.IntSize(0, 0)) }
     val stNow by rememberUpdatedState(st)
 
-    Box(
+    Column(
         Modifier
             .fillMaxSize()
-            .background(Color(0xFF1B3136))
-            .onSizeChanged { size = it }
+            .background(Sumi)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
     ) {
-        AndroidView(
-            factory = { ctx -> DockView(ctx).also { dockRef = it } },
-            modifier = Modifier.fillMaxSize(),
-            update = { v ->
-                v.editMode = true
-                v.cols = st.dockCols
-                v.rows = st.dockRows
-                v.cellDp = st.dockCellDp.toFloat()
-                v.showLabels = st.dockLabels
-                v.posFixed = true   // 設置画面では、保存されている高さに表示
-                v.posYPercent = st.dockYPercent
-                v.gapDp = st.dockGapDp.toFloat()
-                v.show(items, 0f, 0f, fromRight, size.width, size.height)
-            }
-        )
-
-        // ジェスチャー
+        // ── 上：ドック ──
         Box(
             Modifier
-                .fillMaxSize()
-                .pointerInput(size) {
-                    awaitEachGesture {
-                        val dock = dockRef ?: return@awaitEachGesture
-                        val down = awaitFirstDown()
-                        val p0 = down.position
-                        val hit0 = dock.hit(p0.x, p0.y)
+                .fillMaxWidth()
+                .weight(1f)
+                .background(Color(0xFF1B3136))
+                .onSizeChanged { area = it }
+        ) {
+            AndroidView(
+                factory = { ctx -> DockView(ctx).also { dockRef = it } },
+                modifier = Modifier.fillMaxSize(),
+                update = { v ->
+                    v.editMode = true
+                    v.cols = st.dockCols
+                    v.rows = st.dockRows
+                    v.cellDp = st.dockCellDp.toFloat()
+                    v.showLabels = st.dockLabels
+                    v.show(items, 0f, 0f, true, area.width, area.height)
+                }
+            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(area) {
+                        awaitEachGesture {
+                            val dock = dockRef ?: return@awaitEachGesture
+                            val down = awaitFirstDown()
+                            val p0 = down.position
+                            val hit0 = dock.hit(p0.x, p0.y)
 
-                        // 長押しを待つ（その前に離したらタップ）
-                        var up: PointerInputChange? = null
-                        val released = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
-                            up = waitForUpOrCancellation(); true
-                        }
-                        if (released == true) {
-                            val u = up ?: return@awaitEachGesture
-                            val rm = dock.hitRemove(u.position.x, u.position.y)
-                            val h = dock.hit(u.position.x, u.position.y)
-                            val cur = DockItems.parse(stNow.dockItems)
-                            when {
-                                rm >= 0 -> update(stNow.copy(dockItems = DockItems.join(cur.filterIndexed { i, _ -> i != rm })))
-                                h == DockView.HIT_ADD -> openPicker()
+                            // 長押しを待つ（その前に離したらタップ）
+                            var up: PointerInputChange? = null
+                            val released = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                                up = waitForUpOrCancellation(); true
                             }
-                            return@awaitEachGesture
-                        }
+                            if (released == true) {
+                                val u = up ?: return@awaitEachGesture
+                                val rm = dock.hitRemove(u.position.x, u.position.y)
+                                val h = dock.hit(u.position.x, u.position.y)
+                                val cur = DockItems.parse(stNow.dockItems)
+                                when {
+                                    rm >= 0 -> update(stNow.copy(dockItems = DockItems.join(cur.filterIndexed { i, _ -> i != rm })))
+                                    h == DockView.HIT_ADD -> openPicker()
+                                }
+                                return@awaitEachGesture
+                            }
 
-                        // 長押し → 項目を持ち上げる
-                        if (hit0 < 0) return@awaitEachGesture
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        dock.dragFrom = hit0
-                        dock.dragX = p0.x; dock.dragY = p0.y
-                        dock.dropAt = hit0
-                        dock.invalidate()
-                        var lastPos = p0
-                        while (true) {
-                            val ev = awaitPointerEvent()
-                            val c = ev.changes.firstOrNull { it.id == down.id } ?: break
-                            if (!c.pressed) { lastPos = c.position; break }
-                            c.consume()
-                            lastPos = c.position
-                            dock.dragX = c.position.x; dock.dragY = c.position.y
-                            val ci = dock.cellIndex(c.position.x, c.position.y)
-                            if (ci >= 0) dock.dropAt = ci
+                            // 長押し → 項目を持ち上げる
+                            if (hit0 < 0) return@awaitEachGesture
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            dock.dragFrom = hit0
+                            dock.dragX = p0.x; dock.dragY = p0.y
+                            dock.dropAt = hit0
                             dock.invalidate()
-                        }
-                        val from = dock.dragFrom
-                        val ci = dock.cellIndex(lastPos.x, lastPos.y)
-                        val to = (if (ci >= 0) ci else dock.dropAt).coerceIn(0, (items.size - 1).coerceAtLeast(0))
-                        dock.dragFrom = -1; dock.dropAt = -1
-                        dock.invalidate()
-                        val cur = DockItems.parse(stNow.dockItems).toMutableList()
-                        if (from in cur.indices && from != to) {
-                            cur.add(to, cur.removeAt(from))
-                            update(stNow.copy(dockItems = DockItems.join(cur)))
+                            var lastPos = p0
+                            while (true) {
+                                val ev = awaitPointerEvent()
+                                val c = ev.changes.firstOrNull { it.id == down.id } ?: break
+                                if (!c.pressed) { lastPos = c.position; break }
+                                c.consume()
+                                lastPos = c.position
+                                dock.dragX = c.position.x; dock.dragY = c.position.y
+                                val ci = dock.cellIndex(c.position.x, c.position.y)
+                                if (ci >= 0) dock.dropAt = ci
+                                dock.invalidate()
+                            }
+                            val from = dock.dragFrom
+                            val ci = dock.cellIndex(lastPos.x, lastPos.y)
+                            val to = (if (ci >= 0) ci else dock.dropAt).coerceIn(0, (items.size - 1).coerceAtLeast(0))
+                            dock.dragFrom = -1; dock.dropAt = -1
+                            dock.invalidate()
+                            val cur = DockItems.parse(stNow.dockItems).toMutableList()
+                            if (from in cur.indices && from != to) {
+                                cur.add(to, cur.removeAt(from))
+                                update(stNow.copy(dockItems = DockItems.join(cur)))
+                            }
                         }
                     }
-                }
-        )
+            )
+        }
 
-        // 下の操作パネル
+        // ── 下：設定 ──
         Column(
             Modifier
-                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(Sumi)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 28.dp, vertical = 14.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("ドックの設置", color = Kinari, fontSize = 18.sp, fontFamily = Mincho, modifier = Modifier.weight(1f))
-                Text(
-                    if (folded) "ひらく" else "たたむ", color = Usuzumi, fontSize = 12.sp,
-                    modifier = Modifier.clickable { folded = !folded }.padding(horizontal = 10.dp, vertical = 6.dp)
-                )
-                Spacer(Modifier.width(6.dp))
+                Text("ドックの中身", color = Kinari, fontSize = 18.sp, fontFamily = Mincho, modifier = Modifier.weight(1f))
                 Choice("完了", true, onClick = close)
             }
-            if (!folded) {
-                Spacer(Modifier.height(6.dp))
-                Note("長押しで持ち上げて移動／「×」で外す／右上の「＋ 追加」で追加")
-                Spacer(Modifier.height(12.dp))
-                Choice("位置を調整する（画面全体を見ながら）", true) { overview = true }
-                Label("出す高さ")
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Choice("指の高さ", !st.dockFixed) { update(st.copy(dockFixed = false)) }
-                    Choice("決まった高さ", st.dockFixed) { update(st.copy(dockFixed = true)) }
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(3, 4, 5).forEach { c -> Choice("横$c", st.dockCols == c) { update(st.copy(dockCols = c)) } }
-                    Spacer(Modifier.width(6.dp))
-                    listOf(2, 3, 4, 5, 6).forEach { r -> Choice("$r", st.dockRows == r) { update(st.copy(dockRows = r)) } }
-                }
-                SliderRow("大きさ", st.dockCellDp.toFloat(), 52f..110f, "${st.dockCellDp}dp") {
-                    update(st.copy(dockCellDp = it.toInt()))
-                }
-                ToggleRow("アプリ名を表示", st.dockLabels) { update(st.copy(dockLabels = it)) }
+            Spacer(Modifier.height(6.dp))
+            Note("長押しで持ち上げて移動／「×」で外す／右上の「＋ 追加」で追加")
+            Label("横の数")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf(3, 4, 5).forEach { c -> Choice("$c", st.dockCols == c) { update(st.copy(dockCols = c)) } }
             }
+            Label("縦の数（最大）")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                listOf(2, 3, 4, 5, 6).forEach { r -> Choice("$r", st.dockRows == r) { update(st.copy(dockRows = r)) } }
+            }
+            SliderRow("大きさ", st.dockCellDp.toFloat(), 52f..110f, "${st.dockCellDp}dp") {
+                update(st.copy(dockCellDp = it.toInt()))
+            }
+            ToggleRow("アプリ名を表示", st.dockLabels) { update(st.copy(dockLabels = it)) }
         }
     }
 }
@@ -977,7 +950,7 @@ private fun DockOverview(st: Settings, update: (Settings) -> Unit, close: () -> 
     ) {
         Spacer(Modifier.height(20.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("位置の調整", color = Kinari, fontSize = 20.sp, fontFamily = Mincho, modifier = Modifier.weight(1f))
+            Text("ドックの設置", color = Kinari, fontSize = 20.sp, fontFamily = Mincho, modifier = Modifier.weight(1f))
             Choice("完了", true, onClick = close)
         }
         Spacer(Modifier.height(6.dp))
@@ -1063,6 +1036,13 @@ private fun DockOverview(st: Settings, update: (Settings) -> Unit, close: () -> 
                     drawCircle(Kinari.copy(alpha = 0.7f), radius = cell * 0.22f, center = Offset(cx, cy))
                 }
             }
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("出す高さ", color = Kinari, fontSize = 14.sp)
+            Spacer(Modifier.width(4.dp))
+            Choice("指の高さ", !st.dockFixed) { update(st.copy(dockFixed = false)) }
+            Choice("決まった高さ", st.dockFixed) { update(st.copy(dockFixed = true)) }
         }
         Spacer(Modifier.height(16.dp))
     }
