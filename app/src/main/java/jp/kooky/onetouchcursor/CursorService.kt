@@ -240,6 +240,8 @@ class CursorService : AccessibilityService(),
         val v = dockView ?: return
         v.cols = s.dockCols
         v.rows = s.dockRows
+        v.cellDp = s.dockCellDp.toFloat()
+        v.showLabels = s.dockLabels
         v.show(DockItems.parse(s.dockItems), rawX, rawY, fromRight, screenW, screenH)
         haptic(false)
     }

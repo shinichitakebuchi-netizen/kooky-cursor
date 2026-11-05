@@ -34,6 +34,8 @@ data class Settings(
     val dockCols: Int = 4,
     val dockRows: Int = 4,
     val dockItems: String = DockItems.DEFAULT,
+    val dockCellDp: Int = 76,             // ドックの1マスの大きさ
+    val dockLabels: Boolean = true,       // アプリ名を表示
 
     // ── 操作 ──
     val vibrate: Boolean = true,
@@ -68,6 +70,8 @@ data class Settings(
             .putInt(K_DCOLS, dockCols)
             .putInt(K_DROWS, dockRows)
             .putString(K_DITEMS, dockItems)
+            .putInt(K_DCELL, dockCellDp)
+            .putBoolean(K_DLABEL, dockLabels)
             .putBoolean(K_CANCEL, cancelOnReturn)
             .apply()
     }
@@ -102,6 +106,8 @@ data class Settings(
         const val K_DCOLS = "dock_cols"
         const val K_DROWS = "dock_rows"
         const val K_DITEMS = "dock_items"
+        const val K_DCELL = "dock_cell"
+        const val K_DLABEL = "dock_labels"
         const val K_CANCEL = "cancel_on_return"
 
         fun prefs(ctx: Context): SharedPreferences =
@@ -135,6 +141,8 @@ data class Settings(
                 dockCols = p.getInt(K_DCOLS, d.dockCols),
                 dockRows = p.getInt(K_DROWS, d.dockRows),
                 dockItems = p.getString(K_DITEMS, d.dockItems) ?: d.dockItems,
+                dockCellDp = p.getInt(K_DCELL, d.dockCellDp),
+                dockLabels = p.getBoolean(K_DLABEL, d.dockLabels),
                 cancelOnReturn = p.getBoolean(K_CANCEL, d.cancelOnReturn),
             )
         }

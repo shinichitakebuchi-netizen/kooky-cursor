@@ -30,11 +30,13 @@ class DockView(context: Context) : View(context) {
     private val icons = HashMap<String, Drawable?>()
     var cols = 4
     var rows = 4
+    var cellDp = 76f          // 1マスの大きさ
+    var showLabels = true     // アプリ名を表示するか
 
     private val panel = RectF()
     private var hovered = -1
 
-    private val cell get() = 76f * d
+    private val cell get() = cellDp * d
     private val pad get() = 12f * d
 
     private val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
@@ -119,7 +121,8 @@ class DockView(context: Context) : View(context) {
             return
         }
 
-        val iconSize = 40f * d
+        val k0 = cell / (76f * d)               // 標準(76dp)に対する倍率
+        val iconSize = cell * (if (showLabels) 0.53f else 0.62f)
         keys.forEachIndexed { i, k ->
             val c = i % cols
             val r = i / cols
@@ -135,7 +138,7 @@ class DockView(context: Context) : View(context) {
                 canvas.drawRoundRect(tmp, 3f * d, 3f * d, line)
             }
 
-            val iTop = top + 8f * d
+            val iTop = if (showLabels) top + 8f * d * k0 else top + (cell - iconSize) / 2
             val icon = icons[k]
             if (icon != null) {
                 icon.setBounds(
@@ -148,15 +151,17 @@ class DockView(context: Context) : View(context) {
                 tmp.set(cx - iconSize / 2, iTop, cx + iconSize / 2, iTop + iconSize)
                 line.color = if (on) cTorinoko else cRikyu; line.strokeWidth = 1f * d
                 canvas.drawRoundRect(tmp, iconSize / 2, iconSize / 2, line)
-                glyph.color = cTorinoko; glyph.textSize = 18f * d
+                glyph.color = cTorinoko; glyph.textSize = iconSize * 0.45f
                 val g = DockItems.action(k)?.glyph ?: "?"
-                canvas.drawText(g, cx, tmp.centerY() + 6f * d, glyph)
+                canvas.drawText(g, cx, tmp.centerY() + glyph.textSize * 0.35f, glyph)
             }
 
-            text.color = if (on) cTorinoko else cKame
-            text.textSize = 10f * d
-            val label = TextUtils.ellipsize(labels[k] ?: "", text, cell - 8f * d, TextUtils.TruncateAt.END)
-            canvas.drawText(label, 0, label.length, cx, iTop + iconSize + 14f * d, text)
+            if (showLabels) {
+                text.color = if (on) cTorinoko else cKame
+                text.textSize = 10f * d * k0.coerceIn(0.8f, 1.3f)
+                val label = TextUtils.ellipsize(labels[k] ?: "", text, cell - 8f * d, TextUtils.TruncateAt.END)
+                canvas.drawText(label, 0, label.length, cx, iTop + iconSize + text.textSize * 1.4f, text)
+            }
         }
     }
 }

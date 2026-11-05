@@ -15,6 +15,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
+import kotlin.math.roundToInt
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -267,6 +275,10 @@ private fun Screen(
                 Choice("縦$r", st.dockRows == r) { update(st.copy(dockRows = r)) }
             }
         }
+        SliderRow("大きさ", st.dockCellDp.toFloat(), 52f..110f, "${st.dockCellDp}dp") {
+            update(st.copy(dockCellDp = it.toInt()))
+        }
+        ToggleRow("アプリ名を表示", st.dockLabels) { update(st.copy(dockLabels = it)) }
         DockItemList(st, update, openPicker)
 
         // ── 操作 ──
@@ -536,36 +548,99 @@ private fun ColorPicker(current: Int, onPick: (Int) -> Unit) {
 
 // ───────── ドックの項目 ─────────
 
+/** 置く項目の一覧。頭に「行-列」を表示し、長押しで浮かせて上下に動かして並べ替える */
 @Composable
 private fun DockItemList(st: Settings, update: (Settings) -> Unit, openPicker: () -> Unit) {
     val ctx = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val items = DockItems.parse(st.dockItems)
-    val cap = st.dockCols * st.dockRows
+    val cols = st.dockCols
+    val cap = cols * st.dockRows
+    val rowH = 52.dp
+    val rowPx = with(LocalDensity.current) { rowH.toPx() }
+
+    var dragIndex by remember { mutableIntStateOf(-1) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val target = if (dragIndex >= 0)
+        (dragIndex + (dragOffset / rowPx).roundToInt()).coerceIn(0, items.lastIndex) else -1
+
     Label("置く項目（${items.size} / $cap）")
-    if (items.size > cap) Note("並びに入りきらない ${items.size - cap} 個は表示されません。")
-    items.forEachIndexed { i, key ->
-        Column {
-            Row(Modifier.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                ItemIcon(key, 28)
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    DockItems.label(ctx, key) ?: "（見つかりません）",
-                    color = Kinari, fontSize = 14.sp, maxLines = 1,
-                    modifier = Modifier.weight(1f)
-                )
-                if (i > 0) {
-                    Text("上へ", color = Usuzumi, fontSize = 12.sp,
-                        modifier = Modifier.clickable {
-                            val l = items.toMutableList(); l.add(i - 1, l.removeAt(i))
-                            update(st.copy(dockItems = DockItems.join(l)))
-                        }.padding(horizontal = 8.dp, vertical = 6.dp))
-                }
-                Text("外す", color = Shu, fontSize = 12.sp,
-                    modifier = Modifier.clickable {
-                        update(st.copy(dockItems = DockItems.join(items - key)))
-                    }.padding(horizontal = 8.dp, vertical = 6.dp))
+    Note("長押しで持ち上げて、上下に動かすと並べ替えできます。番号は ドックの「行-列」です。")
+    if (items.size > cap) Note("並びに入りきらない ${items.size - cap} 個（「—」）は表示されません。")
+    Spacer(Modifier.height(8.dp))
+
+    Column {
+        items.forEachIndexed { i, key ->
+            // 並べ替え後に何番目になるか（番号の表示用）
+            val pos = when {
+                dragIndex < 0 -> i
+                i == dragIndex -> target
+                dragIndex < target && i in (dragIndex + 1)..target -> i - 1
+                dragIndex > target && i in target until dragIndex -> i + 1
+                else -> i
             }
-            HRule(thin = true)
+            val shift = when {
+                dragIndex < 0 -> 0f
+                i == dragIndex -> dragOffset
+                else -> (pos - i) * rowPx
+            }
+            val lifted = i == dragIndex
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .height(rowH)
+                    .zIndex(if (lifted) 1f else 0f)
+                    .graphicsLayer { translationY = shift }
+                    .background(if (lifted) Color(0xFF30525A) else Sumi)
+                    .then(if (lifted) Modifier.border(1.dp, Kinari) else Modifier)
+                    .pointerInput(key, i) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                dragIndex = i; dragOffset = 0f
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            },
+                            onDrag = { change, amount ->
+                                change.consume()
+                                dragOffset += amount.y
+                            },
+                            onDragEnd = {
+                                val from = dragIndex
+                                val to = (from + (dragOffset / rowPx).roundToInt()).coerceIn(0, items.lastIndex)
+                                dragIndex = -1; dragOffset = 0f
+                                if (from >= 0 && from != to) {
+                                    val l = items.toMutableList(); l.add(to, l.removeAt(from))
+                                    update(st.copy(dockItems = DockItems.join(l)))
+                                }
+                            },
+                            onDragCancel = { dragIndex = -1; dragOffset = 0f }
+                        )
+                    }
+            ) {
+                Row(
+                    Modifier.weight(1f).padding(horizontal = if (lifted) 8.dp else 0.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        if (pos < cap) "${pos / cols + 1}-${pos % cols + 1}" else "—",
+                        color = if (pos < cap) Shu else Line,
+                        fontSize = 12.sp, fontFamily = Mincho,
+                        modifier = Modifier.width(34.dp)
+                    )
+                    ItemIcon(key, 26)
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        DockItems.label(ctx, key) ?: "（見つかりません）",
+                        color = Kinari, fontSize = 14.sp, maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text("外す", color = Usuzumi, fontSize = 12.sp,
+                        modifier = Modifier.clickable {
+                            update(st.copy(dockItems = DockItems.join(items - key)))
+                        }.padding(horizontal = 8.dp, vertical = 6.dp))
+                    Text("≡", color = Line, fontSize = 16.sp, modifier = Modifier.padding(start = 4.dp))
+                }
+                HRule(thin = true)
+            }
         }
     }
     Spacer(Modifier.height(14.dp))
