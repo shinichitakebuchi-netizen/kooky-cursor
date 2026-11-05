@@ -242,21 +242,43 @@ class CursorService : AccessibilityService(),
         v.rows = s.dockRows
         v.cellDp = s.dockCellDp.toFloat()
         v.showLabels = s.dockLabels
+        v.posFixed = s.dockFixed
+        v.posYPercent = s.dockYPercent
+        v.gapDp = s.dockGapDp.toFloat()
+        v.editMode = false
         v.show(DockItems.parse(s.dockItems), rawX, rawY, fromRight, screenW, screenH)
         haptic(false)
     }
 
     override fun dockMove(rawX: Float, rawY: Float) {
         val v = dockView ?: return
-        if (v.setHovered(v.hit(rawX, rawY)) && v.hit(rawX, rawY) >= 0) haptic(false)
+        val h = v.hit(rawX, rawY)
+        if (v.setHovered(h) && (h >= 0 || h == DockView.HIT_HEADER)) haptic(false)
     }
 
     override fun dockRelease(rawX: Float, rawY: Float) {
         val v = dockView ?: return
-        val key = v.keyAt(v.hit(rawX, rawY))
+        val h = v.hit(rawX, rawY)
+        val key = v.keyAt(h)
         v.hide()
         // 設定画面を開いている間は見た目の確認だけ（起動しない）
-        if (key != null && !previewOn) DockItems.run(this, key)
+        if (previewOn) return
+        if (h == DockView.HIT_HEADER) {
+            // 「⚙ 設定」→ ドックの設置画面を開く
+            runCatching {
+                startActivity(
+                    android.content.Intent(this, MainActivity::class.java)
+                        .putExtra(MainActivity.EXTRA_EDIT_DOCK, true)
+                        .addFlags(
+                            android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                                android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
+                        )
+                )
+            }
+            return
+        }
+        if (key != null) DockItems.run(this, key)
     }
 
     override fun dockAbort() {

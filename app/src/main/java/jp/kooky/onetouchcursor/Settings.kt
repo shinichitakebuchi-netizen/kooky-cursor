@@ -36,6 +36,9 @@ data class Settings(
     val dockItems: String = DockItems.DEFAULT,
     val dockCellDp: Int = 76,             // ドックの1マスの大きさ
     val dockLabels: Boolean = true,       // アプリ名を表示
+    val dockFixed: Boolean = false,       // 位置：true=決まった高さ / false=指の高さ
+    val dockYPercent: Int = 50,           // 決まった高さ（ドックの中心、上端=0%）
+    val dockGapDp: Int = 36,              // 端からの距離
 
     // ── 操作 ──
     val vibrate: Boolean = true,
@@ -72,6 +75,9 @@ data class Settings(
             .putString(K_DITEMS, dockItems)
             .putInt(K_DCELL, dockCellDp)
             .putBoolean(K_DLABEL, dockLabels)
+            .putBoolean(K_DFIXED, dockFixed)
+            .putInt(K_DY, dockYPercent)
+            .putInt(K_DGAP, dockGapDp)
             .putBoolean(K_CANCEL, cancelOnReturn)
             .apply()
     }
@@ -108,6 +114,9 @@ data class Settings(
         const val K_DITEMS = "dock_items"
         const val K_DCELL = "dock_cell"
         const val K_DLABEL = "dock_labels"
+        const val K_DFIXED = "dock_fixed"
+        const val K_DY = "dock_y"
+        const val K_DGAP = "dock_gap"
         const val K_CANCEL = "cancel_on_return"
 
         fun prefs(ctx: Context): SharedPreferences =
@@ -143,6 +152,9 @@ data class Settings(
                 dockItems = p.getString(K_DITEMS, d.dockItems) ?: d.dockItems,
                 dockCellDp = p.getInt(K_DCELL, d.dockCellDp),
                 dockLabels = p.getBoolean(K_DLABEL, d.dockLabels),
+                dockFixed = p.getBoolean(K_DFIXED, d.dockFixed),
+                dockYPercent = p.getInt(K_DY, d.dockYPercent),
+                dockGapDp = p.getInt(K_DGAP, d.dockGapDp),
                 cancelOnReturn = p.getBoolean(K_CANCEL, d.cancelOnReturn),
             )
         }
