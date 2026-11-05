@@ -10,6 +10,14 @@
       「他のアプリの上に表示」権限は不要（権限を最小限にするため）。
     -->
 
+    <!-- ドックに置くアプリを選ぶため、ホーム画面に出るアプリの一覧を取得する -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"

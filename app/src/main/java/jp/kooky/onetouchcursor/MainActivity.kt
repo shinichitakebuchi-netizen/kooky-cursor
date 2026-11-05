@@ -7,7 +7,17 @@ import android.os.Bundle
 import android.provider.Settings as AndroidSettings
 import android.view.accessibility.AccessibilityManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.graphics.drawable.toBitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -66,7 +76,14 @@ class MainActivity : ComponentActivity() {
             ) {
                 var st by remember { mutableStateOf(Settings.load(prefs)) }
                 val update: (Settings) -> Unit = { n -> st = n; n.save(prefs) }
+                var picking by remember { mutableStateOf(false) }
+                if (picking) {
+                    BackHandler { picking = false }
+                    DockPicker(st, update) { picking = false }
+                    return@MaterialTheme
+                }
                 Screen(
+                    openPicker = { picking = true },
                     st = st,
                     update = update,
                     serviceOn = serviceOn.value,
@@ -115,6 +132,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun Screen(
+    openPicker: () -> Unit,
     st: Settings,
     update: (Settings) -> Unit,
     serviceOn: Boolean,
@@ -232,6 +250,24 @@ private fun Screen(
                 update(st.copy(startYPercent = it.toInt()))
             }
         }
+
+        // ── ドック ──
+        Section("ドック")
+        Note("帯を長押しせずにそのまま滑らせるとドックが出ます。項目の上で指を離すと起動します。")
+        ToggleRow("滑らせてドックを出す", st.dockEnabled) { update(st.copy(dockEnabled = it)) }
+        Label("並び（横 × 縦）")
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            listOf(3, 4, 5).forEach { c ->
+                Choice("横$c", st.dockCols == c) { update(st.copy(dockCols = c)) }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            listOf(2, 3, 4, 5, 6).forEach { r ->
+                Choice("縦$r", st.dockRows == r) { update(st.copy(dockRows = r)) }
+            }
+        }
+        DockItemList(st, update, openPicker)
 
         // ── 操作 ──
         Section("操作")
@@ -495,5 +531,157 @@ private fun ColorPicker(current: Int, onPick: (Int) -> Unit) {
         Choice("適用", false) {
             if (hex.length == 6) onPick((0xFF000000 or hex.toLong(16)).toInt())
         }
+    }
+}
+
+// ───────── ドックの項目 ─────────
+
+@Composable
+private fun DockItemList(st: Settings, update: (Settings) -> Unit, openPicker: () -> Unit) {
+    val ctx = LocalContext.current
+    val items = DockItems.parse(st.dockItems)
+    val cap = st.dockCols * st.dockRows
+    Label("置く項目（${items.size} / $cap）")
+    if (items.size > cap) Note("並びに入りきらない ${items.size - cap} 個は表示されません。")
+    items.forEachIndexed { i, key ->
+        Column {
+            Row(Modifier.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                ItemIcon(key, 28)
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    DockItems.label(ctx, key) ?: "（見つかりません）",
+                    color = Kinari, fontSize = 14.sp, maxLines = 1,
+                    modifier = Modifier.weight(1f)
+                )
+                if (i > 0) {
+                    Text("上へ", color = Usuzumi, fontSize = 12.sp,
+                        modifier = Modifier.clickable {
+                            val l = items.toMutableList(); l.add(i - 1, l.removeAt(i))
+                            update(st.copy(dockItems = DockItems.join(l)))
+                        }.padding(horizontal = 8.dp, vertical = 6.dp))
+                }
+                Text("外す", color = Shu, fontSize = 12.sp,
+                    modifier = Modifier.clickable {
+                        update(st.copy(dockItems = DockItems.join(items - key)))
+                    }.padding(horizontal = 8.dp, vertical = 6.dp))
+            }
+            HRule(thin = true)
+        }
+    }
+    Spacer(Modifier.height(14.dp))
+    Choice("項目を追加する", false, onClick = openPicker)
+}
+
+@Composable
+private fun ItemIcon(key: String, sizeDp: Int) {
+    val ctx = LocalContext.current
+    val bmp by produceState<ImageBitmap?>(null, key) {
+        value = withContext(Dispatchers.IO) {
+            DockItems.icon(ctx, key)?.toBitmap(96, 96)?.asImageBitmap()
+        }
+    }
+    val b = bmp
+    if (b != null) {
+        Image(b, null, Modifier.size(sizeDp.dp))
+    } else {
+        Box(
+            Modifier.size(sizeDp.dp).border(1.dp, Line, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(DockItems.action(key)?.glyph ?: "", color = Kinari, fontSize = (sizeDp / 2).sp)
+        }
+    }
+}
+
+private data class AppEntry(val key: String, val label: String)
+
+/** 項目を選ぶ画面（操作＋インストール済みアプリ） */
+@Composable
+private fun DockPicker(st: Settings, update: (Settings) -> Unit, close: () -> Unit) {
+    val ctx = LocalContext.current
+    var query by remember { mutableStateOf("") }
+    val apps by produceState<List<AppEntry>?>(null) {
+        value = withContext(Dispatchers.IO) {
+            val pm = ctx.packageManager
+            val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            pm.queryIntentActivities(intent, 0)
+                .map {
+                    val cn = android.content.ComponentName(it.activityInfo.packageName, it.activityInfo.name)
+                    AppEntry(DockItems.appKey(cn), it.loadLabel(pm).toString())
+                }
+                .filter { it.key != "app:" + ctx.packageName + "/" + MainActivity::class.java.name }
+                .sortedBy { it.label }
+        }
+    }
+    val chosen = DockItems.parse(st.dockItems)
+    fun toggle(key: String) {
+        val l = if (key in chosen) chosen - key else chosen + key
+        update(st.copy(dockItems = DockItems.join(l)))
+    }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Sumi)
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(horizontal = 28.dp)
+    ) {
+        Spacer(Modifier.height(28.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("項目を追加", color = Kinari, fontSize = 24.sp, fontFamily = Mincho, modifier = Modifier.weight(1f))
+            Choice("完了", true, onClick = close)
+        }
+        Spacer(Modifier.height(18.dp))
+        BasicTextField(
+            value = query,
+            onValueChange = { query = it },
+            singleLine = true,
+            textStyle = TextStyle(color = Kinari, fontSize = 15.sp),
+            cursorBrush = SolidColor(Kinari),
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { inner ->
+                Column {
+                    Box {
+                        if (query.isEmpty()) Text("さがす", color = Usuzumi, fontSize = 15.sp)
+                        inner()
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    HRule()
+                }
+            }
+        )
+        val list = apps
+        LazyColumn(Modifier.fillMaxSize()) {
+            if (query.isEmpty()) {
+                item { Section("操作") }
+                items(DockItems.actions) { a ->
+                    PickRow(DockItems.actionKey(a.id), a.label, DockItems.actionKey(a.id) in chosen) {
+                        toggle(DockItems.actionKey(a.id))
+                    }
+                }
+            }
+            item { Section("アプリ") }
+            if (list == null) {
+                item { Note("読み込み中…") }
+            } else {
+                items(list.filter { query.isEmpty() || it.label.contains(query, ignoreCase = true) }, key = { it.key }) { a ->
+                    PickRow(a.key, a.label, a.key in chosen) { toggle(a.key) }
+                }
+            }
+            item { Spacer(Modifier.height(40.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun PickRow(key: String, label: String, selected: Boolean, onClick: () -> Unit) {
+    Column(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(Modifier.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            ItemIcon(key, 32)
+            Spacer(Modifier.width(14.dp))
+            Text(label, color = Kinari, fontSize = 15.sp, maxLines = 1, modifier = Modifier.weight(1f))
+            Text(if (selected) "置く" else "", color = Shu, fontSize = 13.sp)
+        }
+        HRule(thin = true)
     }
 }

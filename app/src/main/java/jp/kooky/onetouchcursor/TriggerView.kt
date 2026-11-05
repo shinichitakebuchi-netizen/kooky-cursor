@@ -19,7 +19,7 @@ import kotlin.math.hypot
  *  2. そのまま指を動かす → カーソルが指の動き×速度で移動（指は画面中どこへ動いてもOK）
  *  3. 指を離す → カーソル位置をタップしてカーソルを消す
  *     ※ トリガーの上に指を戻して離した場合はキャンセル（設定ON時）
- *  長押し前に指を動かした／すぐ離した場合は何もしない。
+ *  長押しせずにそのまま指を滑らせる → ドックが出る。項目の上で指を離すと起動（ドックOFF時は何もしない）。
  */
 class TriggerView(context: Context, private val listener: Listener) : View(context) {
 
@@ -29,6 +29,10 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
         fun release(rawX: Float, rawY: Float, cancelled: Boolean)
         fun abort()
         fun haptic(strong: Boolean)
+        fun dockStart(rawX: Float, rawY: Float, fromRight: Boolean)
+        fun dockMove(rawX: Float, rawY: Float)
+        fun dockRelease(rawX: Float, rawY: Float)
+        fun dockAbort()
     }
 
     var holdMs = 250L
@@ -39,12 +43,14 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
     var barStyle = BarStyles.LINE
     var showArea = true      // 触れる範囲を常にうっすら表示
     var preview = false      // 設定画面を開いている間は枠付きで濃く表示
+    var dockEnabled = true   // 長押しせずに滑らせたらドック
 
     private val density = resources.displayMetrics.density
     private val handler = Handler(Looper.getMainLooper())
     private val slop = 10f * density
 
     private var active = false
+    private var docking = false
     private var downRawX = 0f
     private var downRawY = 0f
     private var lastRawX = 0f
@@ -106,6 +112,7 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 active = false
+                docking = false
                 downRawX = e.rawX; downRawY = e.rawY
                 lastRawX = e.rawX; lastRawY = e.rawY
                 lastT = SystemClock.uptimeMillis()
@@ -115,10 +122,21 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
             MotionEvent.ACTION_MOVE -> {
                 val x = e.rawX
                 val y = e.rawY
+                if (docking) {
+                    listener.dockMove(x, y)
+                    lastRawX = x; lastRawY = y
+                    return true
+                }
                 if (!active) {
-                    // 長押し前に動いたら無効（誤操作防止）
+                    // 長押し前に動いた → ドック（OFFなら何もしない）
                     if (hypot(x - downRawX, y - downRawY) > slop) {
                         handler.removeCallbacks(holdRunnable)
+                        if (dockEnabled && !docking) {
+                            docking = true
+                            listener.dockStart(downRawX, downRawY, rightEdge)
+                            listener.dockMove(x, y)
+                            invalidate()
+                        }
                     }
                     lastRawX = x; lastRawY = y
                     return true
@@ -137,19 +155,24 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
 
             MotionEvent.ACTION_UP -> {
                 handler.removeCallbacks(holdRunnable)
-                if (active) {
+                if (docking) {
+                    listener.dockRelease(e.rawX, e.rawY)
+                } else if (active) {
                     val cancelled = cancelOnReturn && isOverTrigger(e.rawX, e.rawY)
                     if (cancelled) listener.haptic(false)
                     listener.release(e.rawX, e.rawY, cancelled)
                 }
                 active = false
+                docking = false
                 invalidate()
             }
 
             MotionEvent.ACTION_CANCEL -> {
                 handler.removeCallbacks(holdRunnable)
                 if (active) listener.abort()
+                if (docking) listener.dockAbort()
                 active = false
+                docking = false
                 invalidate()
             }
         }

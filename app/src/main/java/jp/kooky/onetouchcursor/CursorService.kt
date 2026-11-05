@@ -51,6 +51,7 @@ class CursorService : AccessibilityService(),
     private var cy = 0f
 
     private var cursorView: CursorOverlayView? = null
+    private var dockView: DockView? = null
     /** [0]=左端 / [1]=右端 のトリガー。表示するかは設定で切り替える */
     private val triggers = ArrayList<Pair<TriggerView, WindowManager.LayoutParams>>()
 
@@ -65,6 +66,7 @@ class CursorService : AccessibilityService(),
         instance = this
         updateScreenSize()
         addCursorWindow()
+        addDockWindow()
         addTriggerWindow(right = false)
         addTriggerWindow(right = true)
         applySettings()
@@ -78,6 +80,7 @@ class CursorService : AccessibilityService(),
         handler.removeCallbacksAndMessages(null)
         if (instance === this) instance = null
         cursorView?.let { runCatching { wm.removeView(it) } }
+        dockView?.let { runCatching { wm.removeView(it) } }
         triggers.forEach { (t, _) -> runCatching { wm.removeView(t) } }
         triggers.clear()
         super.onDestroy()
@@ -112,6 +115,21 @@ class CursorService : AccessibilityService(),
     ).apply {
         layoutInDisplayCutoutMode =
             WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+    }
+
+    private fun addDockWindow() {
+        val v = DockView(this)
+        val lp = overlayParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        ).apply { gravity = Gravity.TOP or Gravity.START }
+        v.visibility = View.GONE
+        wm.addView(v, lp)
+        dockView = v
     }
 
     private fun addCursorWindow() {
@@ -163,6 +181,7 @@ class CursorService : AccessibilityService(),
                 cancelOnReturn = s.cancelOnReturn
                 barColor = s.triggerColor
                 barStyle = s.barStyle
+                dockEnabled = s.dockEnabled
                 showArea = s.showArea
                 preview = previewOn
                 invalidate()
@@ -213,6 +232,33 @@ class CursorService : AccessibilityService(),
         cursorView?.visibility = View.GONE
         // 設定画面を開いている間はカーソルの動きだけ確認でき、タップは送らない
         if (!cancelled && !previewOn) tapAt(cx, cy)
+    }
+
+    // ───────── ドック ─────────
+
+    override fun dockStart(rawX: Float, rawY: Float, fromRight: Boolean) {
+        val v = dockView ?: return
+        v.cols = s.dockCols
+        v.rows = s.dockRows
+        v.show(DockItems.parse(s.dockItems), rawX, rawY, fromRight, screenW, screenH)
+        haptic(false)
+    }
+
+    override fun dockMove(rawX: Float, rawY: Float) {
+        val v = dockView ?: return
+        if (v.setHovered(v.hit(rawX, rawY)) && v.hit(rawX, rawY) >= 0) haptic(false)
+    }
+
+    override fun dockRelease(rawX: Float, rawY: Float) {
+        val v = dockView ?: return
+        val key = v.keyAt(v.hit(rawX, rawY))
+        v.hide()
+        // 設定画面を開いている間は見た目の確認だけ（起動しない）
+        if (key != null && !previewOn) DockItems.run(this, key)
+    }
+
+    override fun dockAbort() {
+        dockView?.hide()
     }
 
     override fun abort() {

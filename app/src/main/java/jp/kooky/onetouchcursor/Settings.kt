@@ -29,6 +29,12 @@ data class Settings(
     val startXPercent: Int = 50,          // 決まった位置：左端=0% / 右端=100%
     val startYPercent: Int = 40,          // 決まった位置：上端=0% / 下端=100%
 
+    // ── ドック ──
+    val dockEnabled: Boolean = true,
+    val dockCols: Int = 4,
+    val dockRows: Int = 4,
+    val dockItems: String = DockItems.DEFAULT,
+
     // ── 操作 ──
     val vibrate: Boolean = true,
     val cancelOnReturn: Boolean = true,   // トリガー上に指を戻して離すとキャンセル
@@ -58,6 +64,10 @@ data class Settings(
             .putInt(K_SXP, startXPercent)
             .putInt(K_SYP, startYPercent)
             .putBoolean(K_VIB, vibrate)
+            .putBoolean(K_DOCK, dockEnabled)
+            .putInt(K_DCOLS, dockCols)
+            .putInt(K_DROWS, dockRows)
+            .putString(K_DITEMS, dockItems)
             .putBoolean(K_CANCEL, cancelOnReturn)
             .apply()
     }
@@ -88,6 +98,10 @@ data class Settings(
         const val K_SXP = "start_x_pct"
         const val K_SYP = "start_y_pct"
         const val K_VIB = "vibrate"
+        const val K_DOCK = "dock_enabled"
+        const val K_DCOLS = "dock_cols"
+        const val K_DROWS = "dock_rows"
+        const val K_DITEMS = "dock_items"
         const val K_CANCEL = "cancel_on_return"
 
         fun prefs(ctx: Context): SharedPreferences =
@@ -117,6 +131,10 @@ data class Settings(
                 startXPercent = p.getInt(K_SXP, d.startXPercent),
                 startYPercent = p.getInt(K_SYP, d.startYPercent),
                 vibrate = p.getBoolean(K_VIB, d.vibrate),
+                dockEnabled = p.getBoolean(K_DOCK, d.dockEnabled),
+                dockCols = p.getInt(K_DCOLS, d.dockCols),
+                dockRows = p.getInt(K_DROWS, d.dockRows),
+                dockItems = p.getString(K_DITEMS, d.dockItems) ?: d.dockItems,
                 cancelOnReturn = p.getBoolean(K_CANCEL, d.cancelOnReturn),
             )
         }
