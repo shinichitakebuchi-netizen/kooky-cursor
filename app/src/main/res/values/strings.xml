@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">OneTouch Cursor</string>
-    <string name="service_name">OneTouch Cursor</string>
+    <string name="app_name">縁</string>
+    <string name="service_name">縁</string>
     <string name="service_desc">画面端のトリガーを長押ししてスワイプするとカーソルが出て、指を離した位置をタップします。このサービスは画面の内容を読み取りません。カーソル位置へのタップを送るためだけに使います。</string>
 </resources>

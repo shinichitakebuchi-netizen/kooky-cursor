@@ -126,7 +126,7 @@ private fun Screen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Column {
-            Text("OneTouch Cursor", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text("縁", color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
             Text("v$version", color = TextSub, fontSize = 12.sp)
         }
         Text("画面端の帯を長押し→スワイプでカーソル、離した位置をタップ", color = TextSub, fontSize = 13.sp)
