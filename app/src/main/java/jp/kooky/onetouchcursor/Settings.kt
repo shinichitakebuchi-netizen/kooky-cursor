@@ -40,6 +40,9 @@ data class Settings(
     val dockYPercent: Int = 50,           // 決まった高さ（ドックの中心、上端=0%）
     val dockGapDp: Int = 36,              // 端からの距離
 
+    // ── 文字 ──
+    val font: Int = 0,                    // AppFonts の番号
+
     // ── 操作 ──
     val vibrate: Boolean = true,
     val cancelOnReturn: Boolean = true,   // トリガー上に指を戻して離すとキャンセル
@@ -69,6 +72,7 @@ data class Settings(
             .putInt(K_SXP, startXPercent)
             .putInt(K_SYP, startYPercent)
             .putBoolean(K_VIB, vibrate)
+            .putInt(K_FONT, font)
             .putBoolean(K_DOCK, dockEnabled)
             .putInt(K_DCOLS, dockCols)
             .putInt(K_DROWS, dockRows)
@@ -108,6 +112,7 @@ data class Settings(
         const val K_SXP = "start_x_pct"
         const val K_SYP = "start_y_pct"
         const val K_VIB = "vibrate"
+        const val K_FONT = "font"
         const val K_DOCK = "dock_enabled"
         const val K_DCOLS = "dock_cols"
         const val K_DROWS = "dock_rows"
@@ -146,6 +151,7 @@ data class Settings(
                 startXPercent = p.getInt(K_SXP, d.startXPercent),
                 startYPercent = p.getInt(K_SYP, d.startYPercent),
                 vibrate = p.getBoolean(K_VIB, d.vibrate),
+                font = p.getInt(K_FONT, d.font),
                 dockEnabled = p.getBoolean(K_DOCK, d.dockEnabled),
                 dockCols = p.getInt(K_DCOLS, d.dockCols),
                 dockRows = p.getInt(K_DROWS, d.dockRows),

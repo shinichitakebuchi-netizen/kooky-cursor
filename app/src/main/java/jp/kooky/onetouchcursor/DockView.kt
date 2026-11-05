@@ -67,6 +67,13 @@ class DockView(context: Context) : View(context) {
     var posFixed = false      // true=決まった高さ / false=指の高さ
     var posYPercent = 50      // 決まった高さ（画面の上端=0% / 下端=100%、ドックの中心）
     var gapDp = 36f           // 端からの距離
+    var fontIndex = -1        // AppFonts の番号（文字のフォント）
+        set(v) {
+            if (field != v) {
+                field = v
+                text.typeface = AppFonts.typeface(context, v)
+            }
+        }
 
     // 設置画面用
     var editMode = false      // true のとき、渡された範囲の中央に置き、座標はView内の座標として扱う

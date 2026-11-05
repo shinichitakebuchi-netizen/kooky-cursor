@@ -242,6 +242,7 @@ class CursorService : AccessibilityService(),
         v.rows = s.dockRows
         v.cellDp = s.dockCellDp.toFloat()
         v.showLabels = s.dockLabels
+        v.fontIndex = s.font
         v.posFixed = s.dockFixed
         v.posYPercent = s.dockYPercent
         v.gapDp = s.dockGapDp.toFloat()

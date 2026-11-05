@@ -68,7 +68,10 @@ private val Line = Color(0xFF656255)       // 罫線：利休鼠
 private val Shu = Color(0xFFF35336)        // 見出し・強調：紅緋
 private val Wakatake = Color(0xFF6B9362)   // 稼働中：若竹色
 
-private val Mincho = FontFamily.Serif      // 端末の明朝体（Noto Serif CJK）
+/** 選んだフォント（設定の「文字」） */
+private val LocalAppFont = staticCompositionLocalOf<FontFamily> { FontFamily.Serif }
+private val Mincho: FontFamily
+    @Composable @ReadOnlyComposable get() = LocalAppFont.current
 
 private const val RELEASES_URL =
     "https://github.com/shinichitakebuchi-netizen/kooky-cursor/releases/latest"
@@ -104,16 +107,19 @@ class MainActivity : ComponentActivity() {
             ) {
                 var st by remember { mutableStateOf(Settings.load(prefs)) }
                 val update: (Settings) -> Unit = { n -> st = n; n.save(prefs) }
+                val fontFamily = AppFonts.family(st.font)
+                CompositionLocalProvider(LocalAppFont provides fontFamily) {
+                ProvideTextStyle(TextStyle(fontFamily = fontFamily)) {
                 when (page.value) {
                     "picker" -> {
                         BackHandler { page.value = pickerBack }
                         DockPicker(st, update) { page.value = pickerBack }
-                        return@MaterialTheme
+                        return@ProvideTextStyle
                     }
                     "overview" -> {
                         BackHandler { page.value = "main" }
                         DockOverview(st, update) { page.value = "main" }
-                        return@MaterialTheme
+                        return@ProvideTextStyle
                     }
                     "editor" -> {
                         BackHandler { page.value = "main" }
@@ -122,7 +128,7 @@ class MainActivity : ComponentActivity() {
                             openPicker = { pickerBack = "editor"; page.value = "picker" },
                             close = { page.value = "main" }
                         )
-                        return@MaterialTheme
+                        return@ProvideTextStyle
                     }
                 }
                 Screen(
@@ -153,6 +159,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 )
+                }
+                }
             }
         }
     }
@@ -308,6 +316,28 @@ private fun Screen(
         Choice("ドックの中身（アプリの追加・並び・大きさ）", false, onClick = openEditor)
         Spacer(Modifier.height(4.dp))
         Note("ドックの上の「⚙ 設定」で指を離すと、ドックの中身の画面が開きます。")
+
+        // ── 文字 ──
+        Section("文字")
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            AppFonts.names.forEachIndexed { i, name ->
+                val sel = st.font == i
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, if (sel) Kinari else Line, RoundedCornerShape(2.dp))
+                        .clickable { update(st.copy(font = i)) }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("縁　へり", color = Kinari, fontSize = 22.sp, fontFamily = AppFonts.family(i))
+                    Spacer(Modifier.weight(1f))
+                    Text(name, color = if (sel) Kinari else Usuzumi, fontSize = 12.sp, fontFamily = FontFamily.Default)
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Note("Kaisei Tokumin・Yuji Syuku は SIL Open Font License 1.1 の無料フォントです。")
 
         // ── 操作 ──
         Section("操作")
@@ -824,6 +854,7 @@ private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () 
                 modifier = Modifier.fillMaxSize(),
                 update = { v ->
                     v.editMode = true
+                    v.fontIndex = st.font
                     v.cols = st.dockCols
                     v.rows = st.dockRows
                     v.cellDp = st.dockCellDp.toFloat()
