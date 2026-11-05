@@ -35,7 +35,7 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
     var speed = 2.5f
     var cancelOnReturn = true
     var rightEdge = true
-    var barColor = 0xFFE0632F.toInt()
+    var barColor = 0xFFF35336.toInt()
     var barStyle = BarStyles.LINE
     var showArea = true      // 触れる範囲を常にうっすら表示
     var preview = false      // 設定画面を開いている間は枠付きで濃く表示

@@ -85,7 +85,7 @@ object BarStyles {
             MIZUHIKI -> {
                 val w = (if (active) 2.6f else 2f) * d
                 bar(canvas, cx - 3f * d, top, bottom, w, fill.c(color))
-                bar(canvas, cx + 3f * d, top, bottom, w, fill.c(0xFFF3EEE3.toInt(), 215))
+                bar(canvas, cx + 3f * d, top, bottom, w, fill.c(0xFFC6C2B6.toInt(), 230))
                 // 中央の結び
                 stroke.c(color).strokeWidth = 2f * d
                 val my = (top + bottom) / 2

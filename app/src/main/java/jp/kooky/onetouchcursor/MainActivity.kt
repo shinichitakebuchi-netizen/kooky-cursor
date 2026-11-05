@@ -35,12 +35,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// ───────── 色（墨・生成り・朱） ─────────
-private val Sumi = Color(0xFF1E2024)       // 背景
-private val Kinari = Color(0xFFECE7DC)     // 文字
-private val Usuzumi = Color(0xFF8C8F96)    // 補足の文字
-private val Line = Color(0xFF3A3D44)       // 罫線
-private val Shu = Color(0xFFE0632F)        // 朱（見出し・強調）
+// ───────── 色（日本の内装材料辞典「伝統色」掲載の色名から） ─────────
+private val Sumi = Color(0xFF264348)       // 背景：藍色
+private val Kinari = Color(0xFFE2BE9F)     // 文字：鳥の子色
+private val Usuzumi = Color(0xB3C6C2B6)    // 補足の文字：甕覗（70%）
+private val Line = Color(0xFF656255)       // 罫線：利休鼠
+private val Shu = Color(0xFFF35336)        // 見出し・強調：紅緋
+private val Wakatake = Color(0xFF6B9362)   // 稼働中：若竹色
 
 private val Mincho = FontFamily.Serif      // 端末の明朝体（Noto Serif CJK）
 
@@ -146,7 +147,7 @@ private fun Screen(
             Spacer(Modifier.width(6.dp))
             Box(
                 Modifier.padding(bottom = 13.dp).size(8.dp).clip(CircleShape)
-                    .background(if (serviceOn) Color(0xFF3DA35D) else Shu)
+                    .background(if (serviceOn) Wakatake else Shu)
             )
         }
         Spacer(Modifier.height(10.dp))
@@ -430,10 +431,14 @@ private fun ShapePicker(current: Int, color: Int, onPick: (Int) -> Unit) {
     }
 }
 
-/** 日本の伝統色から */
+/** 日本の内装材料辞典「伝統色」掲載の色（数値は公開資料より。丁子色・葡萄色は数値未確認のため除外） */
 private val presetColors = listOf(
-    "朱" to 0xFFE0632F, "柿" to 0xFFED8A3F, "山吹" to 0xFFF2B33D, "生成り" to 0xFFF3EEE3,
-    "若竹" to 0xFF5BAE7A, "浅葱" to 0xFF3AA6B9, "藍" to 0xFF4A6FA5, "桜" to 0xFFF2A7B5,
+    "一斤染" to 0xFFF08F90, "鴇色" to 0xFFF3A696, "韓紅花" to 0xFFC91F37,
+    "紅緋" to 0xFFF35336, "柿渋色" to 0xFF934337, "鬱金色" to 0xFFE69B3A,
+    "玉子色" to 0xFFFFA631, "鳥の子色" to 0xFFE2BE9F, "鶸色" to 0xFFBDA928,
+    "萌黄" to 0xFF5B8930, "松葉色" to 0xFF454D32, "若竹色" to 0xFF6B9362,
+    "新橋色" to 0xFF006C7F, "甕覗" to 0xFFC6C2B6, "藍色" to 0xFF264348,
+    "利休鼠" to 0xFF656255, "紫苑" to 0xFF976E9A, "桔梗色" to 0xFF5D3F6A,
 ).map { it.first to it.second.toInt() }
 
 @Composable
@@ -441,23 +446,29 @@ private fun ColorPicker(current: Int, onPick: (Int) -> Unit) {
     var hex by remember(current) {
         mutableStateOf(String.format("%06X", current and 0xFFFFFF))
     }
-    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-        presetColors.forEach { (name, c) ->
-            val selected = c == current
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.clickable { onPick(c) }
-            ) {
-                Box(
-                    Modifier
-                        .size(26.dp)
-                        .border(1.dp, if (selected) Kinari else Color.Transparent, CircleShape)
-                        .padding(4.dp)
-                        .clip(CircleShape)
-                        .background(Color(c))
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(name, color = if (selected) Kinari else Usuzumi, fontSize = 9.sp, maxLines = 1)
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        presetColors.chunked(6).forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth()) {
+                row.forEach { (name, c) ->
+                    val selected = c == current
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.weight(1f).clickable { onPick(c) }
+                    ) {
+                        Box(
+                            Modifier
+                                .size(28.dp)
+                                .border(1.dp, if (selected) Kinari else Color.Transparent, CircleShape)
+                                .padding(4.dp)
+                                .clip(CircleShape)
+                                .background(Color(c))
+                                .border(0.5.dp, Line, CircleShape)
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(name, color = if (selected) Kinari else Usuzumi, fontSize = 9.sp, maxLines = 1)
+                    }
+                }
+                repeat(6 - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
