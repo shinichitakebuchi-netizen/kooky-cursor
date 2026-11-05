@@ -12,8 +12,8 @@ android {
         applicationId = "jp.kooky.onetouchcursor"
         minSdk = 34          // Android 14 以降
         targetSdk = 35
-        versionCode = 10
-        versionName = "0.6.0"
+        versionCode = 11
+        versionName = "0.7.0"
     }
 
     // ビルドごとに署名が変わると上書きインストールできないため、固定キーで署名する

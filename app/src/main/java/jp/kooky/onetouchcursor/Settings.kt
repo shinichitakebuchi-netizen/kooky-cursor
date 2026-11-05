@@ -10,7 +10,7 @@ data class Settings(
     val triggerPosPercent: Int = 55,      // トリガー中心の高さ（画面上端=0% / 下端=100%）
     val triggerLengthDp: Int = 180,       // トリガーの長さ
     val triggerWidthDp: Int = 20,         // トリガーの太さ（触れる幅）
-    val triggerColor: Int = 0xFFFF8A2B.toInt(),
+    val triggerColor: Int = 0xFFE0632F.toInt(),
     val triggerTransparency: Int = 40,    // 0%=不透明 / 100%=完全に透明
     val holdMs: Int = 250,                // 長押し判定の時間
     val enabled: Boolean = true,          // トリガー表示 ON/OFF
@@ -19,7 +19,7 @@ data class Settings(
     // ── カーソル ──
     val speed: Float = 2.5f,              // 0.5〜5.0
     val cursorSize: Int = 1,              // 0=小 1=中 2=大
-    val cursorColor: Int = 0xFFFF8A2B.toInt(),
+    val cursorColor: Int = 0xFFE0632F.toInt(),
     val cursorShape: Int = 0,             // CursorShapes の番号
     // カーソルの初期位置
     val startFixed: Boolean = false,      // false=指の近く / true=画面の決まった位置
