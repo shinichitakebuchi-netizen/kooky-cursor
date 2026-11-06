@@ -267,26 +267,60 @@ private fun Screen(
             Choice("右", st.edgeMode == Settings.EDGE_RIGHT) { update(st.copy(edgeMode = Settings.EDGE_RIGHT)) }
             Choice("両方", st.edgeMode == Settings.EDGE_BOTH) { update(st.copy(edgeMode = Settings.EDGE_BOTH)) }
         }
-        Label("形")
-        BarPicker(st.barStyle, st.triggerColor) { update(st.copy(barStyle = it)) }
-        SliderRow("上下の位置", st.triggerPosPercent.toFloat(), 0f..100f, "${st.triggerPosPercent}%") {
-            update(st.copy(triggerPosPercent = it.toInt()))
-        }
-        SliderRow("長さ", st.triggerLengthDp.toFloat(), 60f..500f, "${st.triggerLengthDp}dp") {
-            update(st.copy(triggerLengthDp = it.toInt()))
-        }
-        SliderRow("太さ", st.triggerWidthDp.toFloat(), 8f..48f, "${st.triggerWidthDp}dp") {
-            update(st.copy(triggerWidthDp = it.toInt()))
-        }
-        SliderRow("透明度", st.triggerTransparency.toFloat(), 0f..100f, "${st.triggerTransparency}%") {
-            update(st.copy(triggerTransparency = it.toInt()))
-        }
         SliderRow("長押しの時間", st.holdMs.toFloat(), 100f..800f, "${st.holdMs}ms") {
             update(st.copy(holdMs = (it / 10).toInt() * 10))
         }
         ToggleRow("触れる範囲をうっすら見せる", st.showArea) { update(st.copy(showArea = it)) }
+
+        // 左右それぞれの帯
+        var editRight by remember { mutableStateOf(true) }
+        val sideRight = when (st.edgeMode) {
+            Settings.EDGE_LEFT -> false
+            Settings.EDGE_RIGHT -> true
+            else -> editRight
+        }
+        if (st.edgeMode == Settings.EDGE_BOTH) {
+            Label("設定する帯")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Choice("左の帯", !sideRight) { editRight = false }
+                Choice("右の帯", sideRight) { editRight = true }
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "反対側と同じにする", color = Usuzumi, fontSize = 12.sp,
+                    modifier = Modifier.clickable {
+                        update(st.withBar(sideRight, st.bar(!sideRight)))
+                    }.padding(vertical = 6.dp)
+                )
+            }
+        }
+        val bar = st.bar(sideRight)
+        val setBar: (Bar) -> Unit = { update(st.withBar(sideRight, it)) }
+        Label(if (sideRight) "右の帯の形" else "左の帯の形")
+        BarPicker(bar.style, { i -> if (bar.customColor) bar.color else BarStyles.defaultColor(i) }) {
+            setBar(bar.copy(style = it))
+        }
         Label("色")
-        ColorPicker(st.triggerColor) { update(st.copy(triggerColor = it)) }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Choice("形の色（${BarStyles.defaultColorName(bar.style)}）", !bar.customColor) {
+                setBar(bar.copy(customColor = false))
+            }
+            Spacer(Modifier.width(10.dp))
+            if (bar.customColor) Note("好きな色を使用中")
+        }
+        Spacer(Modifier.height(12.dp))
+        ColorPicker(if (bar.customColor) bar.color else 0) { setBar(bar.copy(customColor = true, color = it)) }
+        SliderRow("上下の位置", bar.posPercent.toFloat(), 0f..100f, "${bar.posPercent}%") {
+            setBar(bar.copy(posPercent = it.toInt()))
+        }
+        SliderRow("長さ", bar.lengthDp.toFloat(), 60f..500f, "${bar.lengthDp}dp") {
+            setBar(bar.copy(lengthDp = it.toInt()))
+        }
+        SliderRow("太さ", bar.widthDp.toFloat(), 8f..48f, "${bar.widthDp}dp") {
+            setBar(bar.copy(widthDp = it.toInt()))
+        }
+        SliderRow("透明度", bar.transparency.toFloat(), 0f..100f, "${bar.transparency}%") {
+            setBar(bar.copy(transparency = it.toInt()))
+        }
 
         // ── カーソル ──
         Section("カーソル")
@@ -498,7 +532,7 @@ private fun Choice(text: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun BarPicker(current: Int, color: Int, onPick: (Int) -> Unit) {
+private fun BarPicker(current: Int, colorFor: (Int) -> Int, onPick: (Int) -> Unit) {
     val items = BarStyles.names.indices.toList()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items.chunked(4).forEach { row ->
@@ -517,7 +551,7 @@ private fun BarPicker(current: Int, color: Int, onPick: (Int) -> Unit) {
                             drawIntoCanvas {
                                 BarStyles.draw(
                                     it.nativeCanvas, size.width / 2, 0f, size.height,
-                                    i, color, false, density
+                                    i, colorFor(i), false, density
                                 )
                             }
                         }
@@ -1072,11 +1106,15 @@ private fun DockOverview(st: Settings, update: (Settings) -> Unit, close: () -> 
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(s0 * 0.25f, s0 * 0.25f)
                     )
                 }
-                // 触れる帯
-                val bh = st.triggerLengthDp * d * scale
-                val by = (fh * st.triggerPosPercent / 100f - bh / 2).coerceIn(0f, (fh - bh).coerceAtLeast(0f))
-                if (st.rightOn) drawLine(Shu, Offset(fw - 3.dp.toPx(), by), Offset(fw - 3.dp.toPx(), by + bh), 3.dp.toPx())
-                if (st.leftOn) drawLine(Shu, Offset(3.dp.toPx(), by), Offset(3.dp.toPx(), by + bh), 3.dp.toPx())
+                // 触れる帯（左右それぞれの位置・長さ・色）
+                for (right in listOf(false, true)) {
+                    if (if (right) !st.rightOn else !st.leftOn) continue
+                    val bb = st.bar(right)
+                    val bh = bb.lengthDp * d * scale
+                    val by = (fh * bb.posPercent / 100f - bh / 2).coerceIn(0f, (fh - bh).coerceAtLeast(0f))
+                    val x = if (right) fw - 3.dp.toPx() else 3.dp.toPx()
+                    drawLine(Color(bb.shownColor), Offset(x, by), Offset(x, by + bh), 3.dp.toPx())
+                }
 
                 // ドック（実寸で計算して縮小）
                 val (w, h) = DockView.size(st.dockCols, st.dockRows, count, st.dockCellDp.toFloat(), d)

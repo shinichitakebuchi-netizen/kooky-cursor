@@ -28,6 +28,19 @@ object BarStyles {
 
     val names = listOf("線", "筆", "竹", "刺し子", "水引", "滲み", "栞紐")
 
+    /** 形の名前に合わせた初期の色（色名, 色） */
+    val defaults = listOf(
+        "紅緋" to 0xFFF35336.toInt(),    // 線
+        "墨" to 0xFF313131.toInt(),      // 筆：墨で書く
+        "若竹色" to 0xFF6B9362.toInt(),  // 竹
+        "白練" to 0xFFF3F3F2.toInt(),    // 刺し子：白い木綿糸
+        "韓紅花" to 0xFFC91F37.toInt(),  // 水引：紅白の紅
+        "藍色" to 0xFF264348.toInt(),    // 滲み：藍染めのにじみ
+        "紫苑" to 0xFF976E9A.toInt(),    // 栞紐：紫の栞紐
+    )
+    fun defaultColor(style: Int): Int = defaults.getOrElse(style) { defaults[0] }.second
+    fun defaultColorName(style: Int): String = defaults.getOrElse(style) { defaults[0] }.first
+
     private const val KAME = 0xFFC6C2B6.toInt()   // 甕覗（水引のもう一本）
 
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }

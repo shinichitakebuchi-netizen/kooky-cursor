@@ -7,12 +7,8 @@ import android.content.SharedPreferences
 data class Settings(
     // ── トリガー ──
     val edgeMode: Int = EDGE_RIGHT,       // 0=左端 / 1=右端 / 2=両方
-    val triggerPosPercent: Int = 55,      // トリガー中心の高さ（画面上端=0% / 下端=100%）
-    val triggerLengthDp: Int = 180,       // トリガーの長さ
-    val triggerWidthDp: Int = 20,         // トリガーの太さ（触れる幅）
-    val triggerColor: Int = 0xFFF35336.toInt(),
-    val barStyle: Int = 0,                // BarStyles の番号
-    val triggerTransparency: Int = 40,    // 0%=不透明 / 100%=完全に透明
+    val left: Bar = Bar(),                // 左端の帯
+    val right: Bar = Bar(),               // 右端の帯
     val holdMs: Int = 250,                // 長押し判定の時間
     val enabled: Boolean = true,          // トリガー表示 ON/OFF
     val showArea: Boolean = true,         // 触れる範囲を常にうっすら表示
@@ -54,12 +50,6 @@ data class Settings(
     fun save(prefs: SharedPreferences) {
         prefs.edit()
             .putInt(K_EDGE, edgeMode)
-            .putInt(K_POS, triggerPosPercent)
-            .putInt(K_LEN, triggerLengthDp)
-            .putInt(K_WIDTH, triggerWidthDp)
-            .putInt(K_TCOLOR, triggerColor)
-            .putInt(K_BAR, barStyle)
-            .putInt(K_TTRANS, triggerTransparency)
             .putInt(K_HOLD, holdMs)
             .putBoolean(K_ENABLED, enabled)
             .putBoolean(K_AREA, showArea)
@@ -85,8 +75,12 @@ data class Settings(
             .putInt(K_DY, dockYPercent)
             .putInt(K_DGAP, dockGapDp)
             .putBoolean(K_CANCEL, cancelOnReturn)
+            .also { e -> left.save(e, "L_"); right.save(e, "R_") }
             .apply()
     }
+
+    fun bar(rightSide: Boolean): Bar = if (rightSide) right else left
+    fun withBar(rightSide: Boolean, b: Bar): Settings = if (rightSide) copy(right = b) else copy(left = b)
 
     companion object {
         const val PREFS_NAME = "onetouch_settings_v2"
@@ -135,12 +129,8 @@ data class Settings(
             return Settings(
                 edgeMode = if (p.contains(K_EDGE)) p.getInt(K_EDGE, d.edgeMode)
                 else if (p.getBoolean(K_RIGHT, true)) EDGE_RIGHT else EDGE_LEFT,
-                triggerPosPercent = p.getInt(K_POS, d.triggerPosPercent),
-                triggerLengthDp = p.getInt(K_LEN, d.triggerLengthDp),
-                triggerWidthDp = p.getInt(K_WIDTH, d.triggerWidthDp),
-                triggerColor = p.getInt(K_TCOLOR, d.triggerColor),
-                barStyle = p.getInt(K_BAR, d.barStyle),
-                triggerTransparency = p.getInt(K_TTRANS, d.triggerTransparency),
+                left = Bar.load(p, "L_"),
+                right = Bar.load(p, "R_"),
                 holdMs = p.getInt(K_HOLD, d.holdMs),
                 enabled = p.getBoolean(K_ENABLED, d.enabled),
                 showArea = p.getBoolean(K_AREA, d.showArea),
@@ -166,6 +156,45 @@ data class Settings(
                 dockYPercent = p.getInt(K_DY, d.dockYPercent),
                 dockGapDp = p.getInt(K_DGAP, d.dockGapDp),
                 cancelOnReturn = p.getBoolean(K_CANCEL, d.cancelOnReturn),
+            )
+        }
+    }
+}
+
+/** 片側の帯の設定。color は customColor=true のときだけ使う（false なら形に合わせた色） */
+data class Bar(
+    val style: Int = BarStyles.LINE,
+    val customColor: Boolean = false,
+    val color: Int = BarStyles.defaultColor(BarStyles.LINE),
+    val posPercent: Int = 55,             // 帯の中心の高さ（上端=0% / 下端=100%）
+    val lengthDp: Int = 180,
+    val widthDp: Int = 20,                // 触れる幅
+    val transparency: Int = 40,           // 0%=不透明 / 100%=ほぼ透明
+) {
+    val shownColor: Int get() = if (customColor) color else BarStyles.defaultColor(style)
+
+    fun save(e: SharedPreferences.Editor, k: String) {
+        e.putInt(k + "style", style)
+            .putBoolean(k + "custom", customColor)
+            .putInt(k + "color", color)
+            .putInt(k + "pos", posPercent)
+            .putInt(k + "len", lengthDp)
+            .putInt(k + "width", widthDp)
+            .putInt(k + "trans", transparency)
+    }
+
+    companion object {
+        /** 左右別の設定が無ければ、前の共通の設定から引き継ぐ（色は形の色に戻す） */
+        fun load(p: SharedPreferences, k: String): Bar {
+            val d = Bar()
+            return Bar(
+                style = p.getInt(k + "style", p.getInt(Settings.K_BAR, d.style)),
+                customColor = p.getBoolean(k + "custom", false),
+                color = p.getInt(k + "color", d.color),
+                posPercent = p.getInt(k + "pos", p.getInt(Settings.K_POS, d.posPercent)),
+                lengthDp = p.getInt(k + "len", p.getInt(Settings.K_LEN, d.lengthDp)),
+                widthDp = p.getInt(k + "width", p.getInt(Settings.K_WIDTH, d.widthDp)),
+                transparency = p.getInt(k + "trans", p.getInt(Settings.K_TTRANS, d.transparency)),
             )
         }
     }

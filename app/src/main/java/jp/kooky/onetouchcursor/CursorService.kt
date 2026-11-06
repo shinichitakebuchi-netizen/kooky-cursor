@@ -35,7 +35,7 @@ class CursorService : AccessibilityService(),
         fun setPreview(on: Boolean) {
             previewOn = on
             instance?.let { svc ->
-                svc.triggers.forEach { (t, _) -> t.preview = on; t.alpha = svc.triggerAlpha(); t.invalidate() }
+                svc.triggers.forEach { (t, _) -> t.preview = on; t.alpha = svc.triggerAlpha(t.rightEdge); t.invalidate() }
             }
         }
     }
@@ -150,7 +150,7 @@ class CursorService : AccessibilityService(),
     private fun addTriggerWindow(right: Boolean) {
         val t = TriggerView(this, this).apply { rightEdge = right }
         val lp = overlayParams(
-            dp(s.triggerWidthDp), dp(s.triggerLengthDp),
+            dp(s.right.widthDp), dp(s.right.lengthDp),
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
@@ -162,11 +162,12 @@ class CursorService : AccessibilityService(),
     // ───────── 設定反映 ─────────
 
     private fun applySettings() {
-        val h = dp(s.triggerLengthDp)
-        val center = screenH * s.triggerPosPercent / 100
         triggers.forEach { (t, lp) ->
             val right = t.rightEdge
-            lp.width = dp(s.triggerWidthDp)
+            val b = s.bar(right)
+            val h = dp(b.lengthDp)
+            val center = screenH * b.posPercent / 100
+            lp.width = dp(b.widthDp)
             lp.height = h
             lp.gravity = Gravity.TOP or (if (right) Gravity.END else Gravity.START)
             lp.x = 0
@@ -175,12 +176,12 @@ class CursorService : AccessibilityService(),
             t.apply {
                 val on = s.enabled && (if (right) s.rightOn else s.leftOn)
                 visibility = if (on) View.VISIBLE else View.GONE
-                alpha = triggerAlpha()
+                alpha = triggerAlpha(right)
                 holdMs = s.holdMs.toLong()
                 speed = s.speed
                 cancelOnReturn = s.cancelOnReturn
-                barColor = s.triggerColor
-                barStyle = s.barStyle
+                barColor = b.shownColor
+                barStyle = b.style
                 dockEnabled = s.dockEnabled
                 showArea = s.showArea
                 preview = previewOn
@@ -196,8 +197,8 @@ class CursorService : AccessibilityService(),
     }
 
     /** 設定画面を開いている間は透明度に関係なく見えるようにする */
-    private fun triggerAlpha(): Float =
-        if (previewOn) 1f else (1f - s.triggerTransparency / 100f).coerceIn(0.05f, 1f)
+    private fun triggerAlpha(right: Boolean): Float =
+        if (previewOn) 1f else (1f - s.bar(right).transparency / 100f).coerceIn(0.05f, 1f)
 
     // ───────── TriggerView.Listener ─────────
 
