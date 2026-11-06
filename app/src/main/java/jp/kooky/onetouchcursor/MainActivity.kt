@@ -35,6 +35,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -60,13 +61,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// ───────── 色（日本の内装材料辞典「伝統色」掲載の色名から） ─────────
-private val Sumi = Color(0xFF264348)       // 背景：藍色
-private val Kinari = Color(0xFFE2BE9F)     // 文字：鳥の子色
-private val Usuzumi = Color(0xB3C6C2B6)    // 補足の文字：甕覗（70%）
-private val Line = Color(0xFF656255)       // 罫線：利休鼠
-private val Shu = Color(0xFFF35336)        // 見出し・強調：紅緋
-private val Wakatake = Color(0xFF6B9362)   // 稼働中：若竹色
+// ───────── 色（テーマで切り替え。Theme.kt） ─────────
+private val pal = mutableStateOf(Theme.darkPal)
+private val Sumi: Color get() = Color(pal.value.bg)          // 背景：墨／白練
+private val Kinari: Color get() = Color(pal.value.text)      // 文字：白練／墨
+private val Usuzumi: Color get() = Color(pal.value.sub)      // 補足の文字
+private val Line: Color get() = Color(pal.value.line)        // 罫線
+private val Shu: Color get() = Color(pal.value.accent)       // 見出し・強調：紅緋
+private val Wakatake: Color get() = Color(pal.value.ok)      // 稼働中：若竹色
+private val Area: Color get() = Color(pal.value.area)        // 一段沈んだ面
+private val Raised: Color get() = Color(pal.value.raised)    // 持ち上げた行
 
 /** 選んだフォント（設定の「文字」） */
 private val LocalAppFont = staticCompositionLocalOf<FontFamily> { FontFamily.Serif }
@@ -107,6 +111,20 @@ class MainActivity : ComponentActivity() {
             ) {
                 var st by remember { mutableStateOf(Settings.load(prefs)) }
                 val update: (Settings) -> Unit = { n -> st = n; n.save(prefs) }
+                val dark = when (st.theme) {
+                    Theme.DARK -> true
+                    Theme.LIGHT -> false
+                    else -> isSystemInDarkTheme()
+                }
+                val p = if (dark) Theme.darkPal else Theme.lightPal
+                if (pal.value != p) pal.value = p
+                SideEffect {
+                    window.decorView.setBackgroundColor(p.bg)
+                    androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                        .isAppearanceLightStatusBars = !dark
+                    androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                        .isAppearanceLightNavigationBars = !dark
+                }
                 val fontFamily = AppFonts.family(st.font)
                 CompositionLocalProvider(LocalAppFont provides fontFamily) {
                 ProvideTextStyle(TextStyle(fontFamily = fontFamily)) {
@@ -316,6 +334,14 @@ private fun Screen(
         Choice("ドックの中身（アプリの追加・並び・大きさ）", false, onClick = openEditor)
         Spacer(Modifier.height(4.dp))
         Note("ドックの上の「⚙ 設定」で指を離すと、ドックの中身の画面が開きます。")
+
+        // ── 色 ──
+        Section("色")
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Theme.order.forEach { i ->
+                Choice(Theme.names[i], st.theme == i) { update(st.copy(theme = i)) }
+            }
+        }
 
         // ── 文字 ──
         Section("文字")
@@ -546,6 +572,7 @@ private val presetColors = listOf(
     "萌黄" to 0xFF5B8930, "松葉色" to 0xFF454D32, "若竹色" to 0xFF6B9362,
     "新橋色" to 0xFF006C7F, "甕覗" to 0xFFC6C2B6, "藍色" to 0xFF264348,
     "利休鼠" to 0xFF656255, "紫苑" to 0xFF976E9A, "桔梗色" to 0xFF5D3F6A,
+    "白練" to 0xFFF3F3F2, "墨" to 0xFF313131,
 ).map { it.first to it.second.toInt() }
 
 @Composable
@@ -650,7 +677,7 @@ private fun DockItemList(st: Settings, update: (Settings) -> Unit, openPicker: (
                     .height(rowH)
                     .zIndex(if (lifted) 1f else 0f)
                     .graphicsLayer { translationY = shift }
-                    .background(if (lifted) Color(0xFF30525A) else Sumi)
+                    .background(if (lifted) Raised else Sumi)
                     .then(if (lifted) Modifier.border(1.dp, Kinari) else Modifier)
                     .pointerInput(key, i) {
                         detectDragGesturesAfterLongPress(
@@ -847,7 +874,7 @@ private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () 
             Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .background(Color(0xFF1B3136))
+                .background(Area)
                 .onSizeChanged { area = it }
         ) {
             AndroidView(
@@ -856,6 +883,7 @@ private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () 
                 update = { v ->
                     v.editMode = true
                     v.fontIndex = st.font
+                    v.pal = pal.value
                     v.cols = st.dockCols
                     v.rows = st.dockRows
                     v.cellDp = st.dockCellDp.toFloat()
@@ -1026,7 +1054,7 @@ private fun DockOverview(st: Settings, update: (Settings) -> Unit, close: () -> 
                 val r = 22f * d * scale * 2f
                 // 画面の枠
                 drawRoundRect(
-                    color = Color(0xFF1B3136),
+                    color = Area,
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(r, r)
                 )
                 drawRoundRect(

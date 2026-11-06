@@ -2,7 +2,7 @@
 <resources>
     <style name="Theme.OneTouch" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@android:color/black</item>
-        <item name="android:statusBarColor">#264348</item>
-        <item name="android:navigationBarColor">#264348</item>
+        <item name="android:statusBarColor">#313131</item>
+        <item name="android:navigationBarColor">#313131</item>
     </style>
 </resources>

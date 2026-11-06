@@ -49,12 +49,13 @@ class DockView(context: Context) : View(context) {
     private val d = resources.displayMetrics.density
     private val loc = IntArray(2)
 
-    // 配色（伝統色）
-    private val cAi = 0xFF264348.toInt()        // 藍色
-    private val cTorinoko = 0xFFE2BE9F.toInt()  // 鳥の子色
-    private val cKame = 0xFFC6C2B6.toInt()      // 甕覗
-    private val cRikyu = 0xFF656255.toInt()     // 利休鼠
-    private val cBenihi = 0xFFF35336.toInt()    // 紅緋
+    // 配色（テーマ：ダーク＝墨／ライト＝白練）
+    var pal: Theme.Pal = Theme.darkPal
+    private val cAi get() = pal.bg          // 板の色
+    private val cTorinoko get() = pal.text  // 文字（主）
+    private val cKame get() = pal.sub or 0xFF000000.toInt()  // 文字（補足）
+    private val cRikyu get() = pal.line     // 罫線
+    private val cBenihi get() = pal.accent  // 紅緋
 
     private var keys: List<String> = emptyList()
     private val labels = HashMap<String, String>()
