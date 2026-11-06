@@ -104,7 +104,7 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
         val cx = (if (rightEdge) width - inset else inset).coerceIn(0f, width.toFloat())
         BarStyles.draw(
             canvas, cx, 4f * density, height - 4f * density,
-            barStyle, barColor, active, density
+            barStyle, barColor, active, density, if (rightEdge) -1f else 1f
         )
     }
 
