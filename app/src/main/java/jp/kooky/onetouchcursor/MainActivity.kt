@@ -320,7 +320,8 @@ private fun Screen(
         // ── 文字 ──
         Section("文字")
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            AppFonts.names.forEachIndexed { i, name ->
+            AppFonts.order.forEach { i ->
+                val name = AppFonts.names[i]
                 val sel = st.font == i
                 Row(
                     Modifier
