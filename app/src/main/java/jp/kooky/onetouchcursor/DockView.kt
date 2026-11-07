@@ -226,7 +226,7 @@ class DockView(context: Context) : View(context) {
             // 左：ドックの中身 ／ 右：設定の一覧（間に細い縦線）
             val ty = panel.top + headerH / 2 + 4f * d
             text.color = if (headOn) cTorinoko else cKame
-            canvas.drawText("⚙　ドック", (panel.left + panel.centerX()) / 2, ty, text)
+            canvas.drawText("⚙　袂", (panel.left + panel.centerX()) / 2, ty, text)
             text.color = if (homeOn) cTorinoko else cKame
             canvas.drawText("設定　›", (panel.centerX() + panel.right) / 2, ty, text)
             canvas.drawLine(panel.centerX(), panel.top + 8f * d, panel.centerX(), hb - 8f * d,

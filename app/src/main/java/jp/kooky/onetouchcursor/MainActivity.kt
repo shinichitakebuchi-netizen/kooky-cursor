@@ -262,7 +262,7 @@ private fun Screen(
                 Text(if (serviceOn) "稼働中" else "停止中", color = Usuzumi, fontSize = 12.sp)
             }
             Spacer(Modifier.height(8.dp))
-            Note("画面の端を長押しして指を滑らせるとカーソル、長押しせずに滑らせるとドックが出ます。変えた内容はすぐに反映されます。")
+            Note("画面の端を長押しして指を滑らせるとカーソル、長押しせずに滑らせると袂が出ます。変えた内容はすぐに反映されます。")
         // ── 停止中の案内 ──
         if (!serviceOn) {
             Section("はじめに")
@@ -288,7 +288,7 @@ private fun Screen(
             }
             MenuRow("触れる帯", (if (st.enabled) "$sideName・$barNames" else "表示しない")) { openPage(0) }
             MenuRow("カーソル", CursorShapes.names.getOrElse(st.cursorShape) { "" } + "・${st.cursorRadiusDp}dp") { openPage(1) }
-            MenuRow("ドック", if (st.dockEnabled) "${DockItems.parse(st.dockItems).size}項目・横${st.dockCols}" else "使わない") { openPage(2) }
+            MenuRow("袂", if (st.dockEnabled) "${DockItems.parse(st.dockItems).size}項目・横${st.dockCols}" else "使わない") { openPage(2) }
             MenuRow("色合い", Theme.names.getOrElse(st.theme) { "" } + "・差し色 " + Theme.PICK_NAMES.getOrElse(st.accent) { "" }) { openPage(3) }
             MenuRow("文字", AppFonts.names.getOrElse(st.font) { "" }) { openPage(4) }
             MenuRow("操作", "振動 " + (if (st.vibrate) "入" else "切") + "・取り消し " + (if (st.cancelOnReturn) "入" else "切")) { openPage(5) }
@@ -444,15 +444,15 @@ private fun Screen(
                 }
                 2 -> {
         // ── ドック ──
-        Section("ドック")
-        Note("帯を長押しせずにそのまま滑らせるとドックが出ます。項目の上で指を離すと起動します。")
-        ToggleRow("滑らせてドックを出す", st.dockEnabled) { update(st.copy(dockEnabled = it)) }
+        Section("袂")
+        Note("帯を長押しせずにそのまま滑らせると袂が出ます。項目の上で指を離すと起動します。")
+        ToggleRow("滑らせて袂を出す", st.dockEnabled) { update(st.copy(dockEnabled = it)) }
         Spacer(Modifier.height(14.dp))
-        Choice("ドックを設置する（画面全体を見ながら位置を決める）", true, onClick = openOverview)
+        Choice("袂を設置する（画面全体を見ながら位置を決める）", true, onClick = openOverview)
         Spacer(Modifier.height(10.dp))
-        Choice("ドックの中身（アプリの追加・並び・大きさ）", false, onClick = openEditor)
+        Choice("袂の中身（アプリの追加・並び・大きさ）", false, onClick = openEditor)
         Spacer(Modifier.height(4.dp))
-        Note("ドックの上の帯は、左「⚙ ドック」で指を離すとドックの中身、右「設定」で離すとこの設定の一覧が開きます。")
+        Note("袂の上の帯は、左「⚙ 袂」で指を離すと袂の中身、右「設定」で離すとこの設定の一覧が開きます。")
 
                 }
                 3 -> {
@@ -512,7 +512,7 @@ private fun Screen(
                 }
             }
             Spacer(Modifier.height(28.dp))
-            Note("この画面を開いている間は、カーソルやドックは出ますが、指を離しても押しません。")
+            Note("この画面を開いている間は、カーソルや袂は出ますが、指を離しても押しません。")
         }
         Spacer(Modifier.height(32.dp))
     }
@@ -856,7 +856,7 @@ private fun DockItemList(st: Settings, update: (Settings) -> Unit, openPicker: (
         (dragIndex + (dragOffset / rowPx).roundToInt()).coerceIn(0, items.lastIndex) else -1
 
     Label("置く項目（${items.size} / $cap）")
-    Note("長押しで持ち上げて、上下に動かすと並べ替えできます。番号は ドックの「行-列」です。")
+    Note("長押しで持ち上げて、上下に動かすと並べ替えできます。番号は 袂の「行-列」です。")
     if (items.size > cap) Note("並びに入りきらない ${items.size - cap} 個（「—」）は表示されません。")
     Spacer(Modifier.height(8.dp))
 
@@ -1173,7 +1173,7 @@ private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () 
                 Choice("完了", true, onClick = close)
             }
             Spacer(Modifier.height(4.dp))
-            Text("ドックの中身", color = Shu, fontSize = 15.sp, fontFamily = Mincho, letterSpacing = 4.sp)
+            Text("袂の中身", color = Shu, fontSize = 15.sp, fontFamily = Mincho, letterSpacing = 4.sp)
             Spacer(Modifier.height(8.dp))
             HRule()
             Spacer(Modifier.height(6.dp))
@@ -1231,11 +1231,11 @@ private fun DockOverview(st: Settings, update: (Settings) -> Unit, home: () -> U
             Choice("完了", true, onClick = close)
         }
         Spacer(Modifier.height(4.dp))
-        Text("ドックの設置", color = Shu, fontSize = 15.sp, fontFamily = Mincho, letterSpacing = 4.sp)
+        Text("袂の設置", color = Shu, fontSize = 15.sp, fontFamily = Mincho, letterSpacing = 4.sp)
         Spacer(Modifier.height(8.dp))
         HRule()
         Spacer(Modifier.height(6.dp))
-        Note("画面全体を縮めて表示しています。ドックを指で動かして置き場所を決めてください。")
+        Note("画面全体を縮めて表示しています。袂を指で動かして置き場所を決めてください。")
         Spacer(Modifier.height(4.dp))
         Text(
             "高さ ${st.dockYPercent}%　・　端から ${st.dockGapDp}dp" +
