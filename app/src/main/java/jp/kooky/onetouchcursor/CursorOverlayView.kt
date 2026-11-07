@@ -23,7 +23,7 @@ class CursorOverlayView(context: Context) : View(context) {
 
     var radiusDp = 14f
     var color = 0xFFFF8A2B.toInt()
-    var shape = CursorShapes.CIRCLE
+    var shape = CursorShapes.ENSO
     var active = true          // 操作中は濃く、放置で薄く
     var dragging = false
 
@@ -43,25 +43,24 @@ class CursorOverlayView(context: Context) : View(context) {
 }
 
 /**
- * カーソルの形。設定画面のプレビューでも同じ描画を使う。
- * (x, y) が常に「タップされる位置」。デザイン上の寸法は r=14 を基準にした単位で書き、u で拡大縮小する。
+ * カーソルの形（和の6種類）。設定画面のプレビューでも同じ描画を使う。
+ * (x, y) が常に「タップされる位置」（矢は鏃の先、それ以外は中心）。
+ * 寸法は r=14 を基準にした単位で書き、u で拡大縮小する。
  */
 object CursorShapes {
-    const val CIRCLE = 0      // ① サークル
-    const val RING = 1        // ② リング（中が透ける）
-    const val CROSSHAIR = 2   // ③ 照準
-    const val ARROW = 3       // ④ 矢印（先端がタップ位置）
-    const val DOT_RING = 4    // ⑤ ドット＋外リング
+    const val ENSO = 0       // 円相
+    const val JANOME = 1     // 蛇の目
+    const val SAKURA = 2     // 桜
+    const val HISHI = 3      // 菱
+    const val ARROW = 4      // 矢（鏃の先がタップ位置）
+    const val KUTSUWA = 5    // 丸に十字
 
-    val names = listOf("サークル", "リング", "照準", "矢印", "ドット＋輪")
+    val names = listOf("円相", "蛇の目", "桜", "菱", "矢", "丸に十字")
 
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-        strokeJoin = Paint.Join.ROUND
-    }
+    private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val path = Path()
+    private val oval = android.graphics.RectF()
 
     private fun Paint.set(c: Int, a: Int, w: Float = strokeWidth): Paint {
         color = c
@@ -72,58 +71,115 @@ object CursorShapes {
 
     fun draw(canvas: Canvas, x: Float, y: Float, shape: Int, r: Float, color: Int, alpha: Int) {
         val u = r / 14f
-        val shadow = (alpha * 0.45f).toInt()
+        val sh = (alpha * 0.35f).toInt()
+        val white = Color.WHITE
+        stroke.strokeCap = Paint.Cap.BUTT
+        stroke.strokeJoin = Paint.Join.MITER
+        canvas.save()
+        canvas.translate(x, y)
         when (shape) {
-            RING -> {
-                val rr = 15f * u
-                canvas.drawCircle(x, y, rr, stroke.set(Color.BLACK, shadow, 6f * u))
-                canvas.drawCircle(x, y, rr, stroke.set(color, alpha, 3.5f * u))
-                canvas.drawCircle(x, y, 2.5f * u, fill.set(color, alpha))
-                canvas.drawCircle(x, y, 2.5f * u, stroke.set(Color.WHITE, alpha, 1f * u))
+            JANOME -> {
+                canvas.drawCircle(0f, 0f, 13f * u, stroke.set(Color.BLACK, sh, 10f * u))
+                canvas.drawCircle(0f, 0f, 13f * u, stroke.set(color, alpha, 7f * u))
+                canvas.drawCircle(0f, 0f, 16.6f * u, stroke.set(white, (alpha * .9f).toInt(), 1.2f * u))
+                canvas.drawCircle(0f, 0f, 2f * u, fill.set(color, alpha))
             }
 
-            CROSSHAIR -> {
-                for (pass in 0..1) {
-                    val p = if (pass == 0) stroke.set(Color.BLACK, shadow, 5f * u)
-                    else stroke.set(color, alpha, 2.5f * u)
-                    canvas.drawLine(x, y - 18f * u, x, y - 10f * u, p)
-                    canvas.drawLine(x, y + 10f * u, x, y + 18f * u, p)
-                    canvas.drawLine(x - 18f * u, y, x - 10f * u, y, p)
-                    canvas.drawLine(x + 10f * u, y, x + 18f * u, y, p)
-                    canvas.drawCircle(x, y, 12f * u, p)
+            SAKURA -> {
+                fun petal() {
+                    path.reset()
+                    path.moveTo(0f, -3.2f * u)
+                    path.cubicTo(-6.5f * u, -5.5f * u, -7f * u, -12.5f * u, -3f * u, -16f * u)
+                    path.lineTo(0f, -13.6f * u)
+                    path.lineTo(3f * u, -16f * u)
+                    path.cubicTo(7f * u, -12.5f * u, 6.5f * u, -5.5f * u, 0f, -3.2f * u)
+                    path.close()
                 }
-                canvas.drawCircle(x, y, 2f * u, fill.set(Color.WHITE, alpha))
+                for (pass in 0..1) {
+                    for (i in 0 until 5) {
+                        canvas.save()
+                        canvas.rotate(i * 72f)
+                        petal()
+                        if (pass == 0) {
+                            canvas.drawPath(path, stroke.set(Color.BLACK, sh, 3f * u))
+                        } else {
+                            canvas.drawPath(path, fill.set(color, (alpha * .92f).toInt()))
+                            canvas.drawPath(path, stroke.set(white, alpha, 1.1f * u))
+                        }
+                        canvas.restore()
+                    }
+                }
+                canvas.drawCircle(0f, 0f, 2.2f * u, fill.set(white, alpha))
+            }
+
+            HISHI -> {
+                stroke.strokeJoin = Paint.Join.ROUND
+                for ((sz, w) in listOf(15f to 3.2f, 8.5f to 2.2f)) {
+                    path.reset()
+                    path.moveTo(0f, -sz * u); path.lineTo(sz * .72f * u, 0f)
+                    path.lineTo(0f, sz * u); path.lineTo(-sz * .72f * u, 0f); path.close()
+                    canvas.drawPath(path, stroke.set(Color.BLACK, sh, (w + 3f) * u))
+                    canvas.drawPath(path, stroke.set(color, alpha, w * u))
+                }
+                canvas.drawCircle(0f, 0f, 2f * u, fill.set(white, alpha))
             }
 
             ARROW -> {
+                canvas.rotate(-35f)   // 左上を指す
+                // 矢柄
+                canvas.drawLine(0f, 6f * u, 0f, 30f * u, stroke.set(Color.BLACK, sh, 4.5f * u))
+                canvas.drawLine(0f, 6f * u, 0f, 30f * u, stroke.set(color, alpha, 2.2f * u))
+                // 鏃
                 path.reset()
-                path.moveTo(x, y)
-                path.lineTo(x, y + 26f * u)
-                path.lineTo(x + 7f * u, y + 19.5f * u)
-                path.lineTo(x + 11.5f * u, y + 29f * u)
-                path.lineTo(x + 16f * u, y + 27f * u)
-                path.lineTo(x + 11.5f * u, y + 17.5f * u)
-                path.lineTo(x + 20f * u, y + 17.5f * u)
-                path.close()
-                canvas.drawPath(path, stroke.set(Color.BLACK, shadow, 4f * u))
+                path.moveTo(0f, 0f); path.lineTo(4.2f * u, 9f * u); path.lineTo(0f, 7f * u)
+                path.lineTo(-4.2f * u, 9f * u); path.close()
+                canvas.drawPath(path, stroke.set(Color.BLACK, sh, 2.5f * u))
                 canvas.drawPath(path, fill.set(color, alpha))
-                canvas.drawPath(path, stroke.set(Color.WHITE, alpha, 2f * u))
+                canvas.drawPath(path, stroke.set(white, alpha, 1f * u))
+                // 矢羽根
+                for (sx in listOf(-1f, 1f)) {
+                    path.reset()
+                    path.moveTo(0f, 20f * u); path.lineTo(sx * 3.2f * u, 22.5f * u)
+                    path.lineTo(sx * 3.2f * u, 31f * u); path.lineTo(0f, 28.5f * u); path.close()
+                    canvas.drawPath(path, stroke.set(Color.BLACK, (sh * .85f).toInt(), 2f * u))
+                    canvas.drawPath(path, fill.set(color, (alpha * .8f).toInt()))
+                    canvas.drawPath(path, stroke.set(white, alpha, .9f * u))
+                }
             }
 
-            DOT_RING -> {
-                canvas.drawCircle(x, y, 17f * u, fill.set(color, (alpha * 0.18f).toInt()))
-                canvas.drawCircle(x, y, 17f * u, stroke.set(color, (alpha * 0.6f).toInt(), 1.5f * u))
-                canvas.drawCircle(x, y, 6f * u, stroke.set(Color.BLACK, shadow, 4f * u))
-                canvas.drawCircle(x, y, 6f * u, fill.set(color, alpha))
-                canvas.drawCircle(x, y, 6f * u, stroke.set(Color.WHITE, alpha, 2f * u))
+            KUTSUWA -> {
+                stroke.strokeCap = Paint.Cap.ROUND
+                canvas.drawCircle(0f, 0f, 14f * u, stroke.set(Color.BLACK, sh, 5.6f * u))
+                canvas.drawCircle(0f, 0f, 14f * u, stroke.set(color, alpha, 2.6f * u))
+                val segs = listOf(
+                    floatArrayOf(0f, -10f, 0f, -3f), floatArrayOf(0f, 3f, 0f, 10f),
+                    floatArrayOf(-10f, 0f, -3f, 0f), floatArrayOf(3f, 0f, 10f, 0f),
+                )
+                for (pass in 0..1) for (sg in segs) {
+                    if (pass == 0) stroke.set(Color.BLACK, sh, 5.6f * u) else stroke.set(color, alpha, 2.6f * u)
+                    canvas.drawLine(sg[0] * u, sg[1] * u, sg[2] * u, sg[3] * u, stroke)
+                }
+                canvas.drawCircle(0f, 0f, 1.8f * u, fill.set(white, alpha))
             }
 
-            else -> { // CIRCLE
-                canvas.drawCircle(x, y, r + 2f * u, stroke.set(Color.BLACK, (alpha * 0.55f).toInt(), 2.5f * u))
-                canvas.drawCircle(x, y, r, fill.set(color, (alpha * 0.85f).toInt()))
-                canvas.drawCircle(x, y, r, stroke.set(Color.WHITE, alpha, 2f * u))
-                canvas.drawCircle(x, y, 2f * u, fill.set(Color.WHITE, alpha))
+            else -> { // ENSO：入りは太く、抜けは細く、少し途切れる
+                stroke.strokeCap = Paint.Cap.ROUND
+                val rr = 15f * u
+                oval.set(-rr, -rr, rr, rr)
+                val start = -60f
+                val sweep = 330f
+                val steps = 40
+                for (pass in 0..1) {
+                    for (k in 0 until steps) {
+                        val w = (5.5f - 4f * k / steps) * u
+                        if (pass == 0) stroke.set(Color.BLACK, (alpha * .25f).toInt(), w + 2.5f * u)
+                        else stroke.set(color, alpha, w)
+                        canvas.drawArc(oval, start + sweep * k / steps, sweep / steps + .6f, false, stroke)
+                    }
+                }
+                canvas.drawCircle(0f, 0f, 2.2f * u, fill.set(color, alpha))
             }
         }
+        canvas.restore()
     }
 }

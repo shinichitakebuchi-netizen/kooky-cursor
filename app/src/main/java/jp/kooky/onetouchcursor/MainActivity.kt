@@ -609,8 +609,9 @@ private fun ShapePicker(current: Int, color: Int, onPick: (Int) -> Unit) {
                 Canvas(Modifier.size(40.dp)) {
                     val r = 8.dp.toPx()
                     // 矢印は先端がタップ位置なので少し左上に寄せて全体を枠内に収める
-                    val ox = if (i == CursorShapes.ARROW) size.width * 0.3f else size.width / 2
-                    val oy = if (i == CursorShapes.ARROW) size.height * 0.18f else size.height / 2
+                    // 矢は鏃の先がタップ位置なので、左上寄りに置いて全体を枠内に収める
+                    val ox = if (i == CursorShapes.ARROW) size.width * 0.32f else size.width / 2
+                    val oy = if (i == CursorShapes.ARROW) size.height * 0.2f else size.height / 2
                     drawIntoCanvas {
                         CursorShapes.draw(it.nativeCanvas, ox, oy, i, r, color, 255)
                     }
