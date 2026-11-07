@@ -14,7 +14,7 @@ data class Settings(
     val showArea: Boolean = true,         // 触れる範囲を常にうっすら表示
 
     // ── カーソル ──
-    val cursorSize: Int = 1,              // 0=小 1=中 2=大
+    val cursorRadiusDp: Int = 14,         // カーソルの大きさ（半径dp）
     val cursorColor: Int = 0xFFF35336.toInt(),
     val cursorShape: Int = 0,             // CursorShapes の番号
     // 左右それぞれの帯から出したときの、カーソルの速さと出てくる位置
@@ -49,7 +49,7 @@ data class Settings(
             .putInt(K_HOLD, holdMs)
             .putBoolean(K_ENABLED, enabled)
             .putBoolean(K_AREA, showArea)
-            .putInt(K_SIZE, cursorSize)
+            .putInt(K_CRADIUS, cursorRadiusDp)
             .putInt(K_COLOR, cursorColor)
             .putInt(K_SHAPE, cursorShape)
             .putBoolean(K_VIB, vibrate)
@@ -95,7 +95,8 @@ data class Settings(
         const val K_ENABLED = "enabled"
         const val K_AREA = "show_area"
         const val K_SPEED = "speed"
-        const val K_SIZE = "cursor_size"
+        const val K_SIZE = "cursor_size"      // 旧：小中大（読み込みのみ）
+        const val K_CRADIUS = "cursor_radius"
         const val K_COLOR = "cursor_color"
         const val K_SHAPE = "cursor_shape"
         const val K_SFIXED = "start_fixed"
@@ -132,7 +133,8 @@ data class Settings(
                 holdMs = p.getInt(K_HOLD, d.holdMs),
                 enabled = p.getBoolean(K_ENABLED, d.enabled),
                 showArea = p.getBoolean(K_AREA, d.showArea),
-                cursorSize = p.getInt(K_SIZE, d.cursorSize),
+                cursorRadiusDp = if (p.contains(K_CRADIUS)) p.getInt(K_CRADIUS, d.cursorRadiusDp)
+                else when (p.getInt(K_SIZE, 1)) { 0 -> 9; 2 -> 20; else -> 14 },
                 cursorColor = p.getInt(K_COLOR, d.cursorColor),
                 cursorShape = p.getInt(K_SHAPE, d.cursorShape),
                 vibrate = p.getBoolean(K_VIB, d.vibrate),

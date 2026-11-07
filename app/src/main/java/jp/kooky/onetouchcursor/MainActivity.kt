@@ -267,8 +267,8 @@ private fun Screen(
             Choice("右", st.edgeMode == Settings.EDGE_RIGHT) { update(st.copy(edgeMode = Settings.EDGE_RIGHT)) }
             Choice("両方", st.edgeMode == Settings.EDGE_BOTH) { update(st.copy(edgeMode = Settings.EDGE_BOTH)) }
         }
-        SliderRow("長押しの時間", st.holdMs.toFloat(), 100f..800f, "${st.holdMs}ms") {
-            update(st.copy(holdMs = (it / 10).toInt() * 10))
+        SliderRow("長押しの時間", st.holdMs.toFloat(), 100f..800f, "${st.holdMs}ms", default = 250f, step = 10f) {
+            update(st.copy(holdMs = (it / 10).roundToInt() * 10))
         }
         ToggleRow("触れる範囲をうっすら見せる", st.showArea) { update(st.copy(showArea = it)) }
 
@@ -309,28 +309,25 @@ private fun Screen(
         }
         Spacer(Modifier.height(12.dp))
         ColorPicker(if (bar.customColor) bar.color else 0) { setBar(bar.copy(customColor = true, color = it)) }
-        SliderRow("上下の位置", bar.posPercent.toFloat(), 0f..100f, "${bar.posPercent}%") {
-            setBar(bar.copy(posPercent = it.toInt()))
+        SliderRow("上下の位置", bar.posPercent.toFloat(), 0f..100f, "${bar.posPercent}%", default = 55f, step = 1f) {
+            setBar(bar.copy(posPercent = it.roundToInt()))
         }
-        SliderRow("長さ", bar.lengthDp.toFloat(), 60f..500f, "${bar.lengthDp}dp") {
-            setBar(bar.copy(lengthDp = it.toInt()))
+        SliderRow("長さ", bar.lengthDp.toFloat(), 60f..500f, "${bar.lengthDp}dp", default = 180f, step = 1f) {
+            setBar(bar.copy(lengthDp = it.roundToInt()))
         }
-        SliderRow("太さ", bar.widthDp.toFloat(), 8f..48f, "${bar.widthDp}dp") {
-            setBar(bar.copy(widthDp = it.toInt()))
+        SliderRow("太さ", bar.widthDp.toFloat(), 8f..48f, "${bar.widthDp}dp", default = 20f, step = 1f) {
+            setBar(bar.copy(widthDp = it.roundToInt()))
         }
-        SliderRow("透明度", bar.transparency.toFloat(), 0f..100f, "${bar.transparency}%") {
-            setBar(bar.copy(transparency = it.toInt()))
+        SliderRow("透明度", bar.transparency.toFloat(), 0f..100f, "${bar.transparency}%", default = 40f, step = 1f) {
+            setBar(bar.copy(transparency = it.roundToInt()))
         }
 
         // ── カーソル ──
         Section("カーソル")
         Label("形")
         ShapePicker(st.cursorShape, st.cursorColor) { update(st.copy(cursorShape = it)) }
-        Label("大きさ")
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            listOf("小", "中", "大").forEachIndexed { i, t ->
-                Choice(t, st.cursorSize == i) { update(st.copy(cursorSize = i)) }
-            }
+        SliderRow("大きさ", st.cursorRadiusDp.toFloat(), 6f..30f, "${st.cursorRadiusDp}dp", default = 14f, step = 1f) {
+            update(st.copy(cursorRadiusDp = it.roundToInt()))
         }
         Label("色")
         ColorPicker(st.cursorColor) { update(st.copy(cursorColor = it)) }
@@ -358,8 +355,8 @@ private fun Screen(
         }
         val cur = st.cursor(cRight)
         val setCur: (CursorSide) -> Unit = { update(st.withCursor(cRight, it)) }
-        SliderRow(if (cRight) "速さ（右の帯から）" else "速さ（左の帯から）", cur.speed, 0.5f..5f, String.format("%.1f", cur.speed)) {
-            setCur(cur.copy(speed = (it * 10).toInt() / 10f))
+        SliderRow(if (cRight) "速さ（右の帯から）" else "速さ（左の帯から）", cur.speed, 0.5f..5f, String.format("%.1f", cur.speed), default = 2.5f, step = 0.1f) {
+            setCur(cur.copy(speed = (it * 10).roundToInt() / 10f))
         }
         Label("出てくる位置")
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -367,18 +364,18 @@ private fun Screen(
             Choice("決まった位置", cur.startFixed) { setCur(cur.copy(startFixed = true)) }
         }
         if (!cur.startFixed) {
-            SliderRow("指から内側へ", cur.offsetXDp.toFloat(), 0f..300f, "${cur.offsetXDp}dp") {
-                setCur(cur.copy(offsetXDp = it.toInt()))
+            SliderRow("指から内側へ", cur.offsetXDp.toFloat(), 0f..300f, "${cur.offsetXDp}dp", default = 70f, step = 1f) {
+                setCur(cur.copy(offsetXDp = it.roundToInt()))
             }
-            SliderRow("指から上へ", cur.offsetYDp.toFloat(), -200f..400f, "${cur.offsetYDp}dp") {
-                setCur(cur.copy(offsetYDp = it.toInt()))
+            SliderRow("指から上へ", cur.offsetYDp.toFloat(), -200f..400f, "${cur.offsetYDp}dp", default = 40f, step = 1f) {
+                setCur(cur.copy(offsetYDp = it.roundToInt()))
             }
         } else {
-            SliderRow("横", cur.xPercent.toFloat(), 0f..100f, "${cur.xPercent}%") {
-                setCur(cur.copy(xPercent = it.toInt()))
+            SliderRow("横", cur.xPercent.toFloat(), 0f..100f, "${cur.xPercent}%", default = 50f, step = 1f) {
+                setCur(cur.copy(xPercent = it.roundToInt()))
             }
-            SliderRow("縦", cur.yPercent.toFloat(), 0f..100f, "${cur.yPercent}%") {
-                setCur(cur.copy(yPercent = it.toInt()))
+            SliderRow("縦", cur.yPercent.toFloat(), 0f..100f, "${cur.yPercent}%", default = 40f, step = 1f) {
+                setCur(cur.copy(yPercent = it.roundToInt()))
             }
         }
 
@@ -504,12 +501,21 @@ private fun SliderRow(
     value: Float,
     range: ClosedFloatingPointRange<Float>,
     display: String,
+    default: Float? = null,          // 「標準に戻す」の値
+    step: Float = 1f,                // −／＋ で動く量
     onChange: (Float) -> Unit,
 ) {
+    fun clampSet(v: Float) = onChange(v.coerceIn(range.start, range.endInclusive))
     Column(Modifier.padding(top = 16.dp)) {
-        Row {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(label, color = Kinari, fontSize = 15.sp, modifier = Modifier.weight(1f))
-            Text(display, color = Usuzumi, fontSize = 14.sp)
+            StepButton("−") { clampSet(value - step) }
+            Text(
+                display, color = Shu, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.widthIn(min = 64.dp)
+            )
+            StepButton("＋") { clampSet(value + step) }
         }
         Slider(
             value = value,
@@ -534,7 +540,27 @@ private fun SliderRow(
                 }
             }
         )
+        if (default != null) {
+            Text(
+                "標準に戻す", color = if (value == default) Line else Usuzumi, fontSize = 11.sp,
+                modifier = Modifier
+                    .clickable { onChange(default) }
+                    .padding(vertical = 4.dp)
+            )
+        }
     }
+}
+
+/** −／＋ の小さなボタン（細い枠） */
+@Composable
+private fun StepButton(label: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(width = 38.dp, height = 32.dp)
+            .border(1.dp, Line, RoundedCornerShape(2.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) { Text(label, color = Kinari, fontSize = 17.sp) }
 }
 
 /** 選択肢：選択中は塗り、それ以外は細い枠 */
@@ -1032,8 +1058,8 @@ private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 listOf(2, 3, 4, 5, 6).forEach { r -> Choice("$r", st.dockRows == r) { update(st.copy(dockRows = r)) } }
             }
-            SliderRow("大きさ", st.dockCellDp.toFloat(), 52f..110f, "${st.dockCellDp}dp") {
-                update(st.copy(dockCellDp = it.toInt()))
+            SliderRow("大きさ", st.dockCellDp.toFloat(), 52f..110f, "${st.dockCellDp}dp", default = 76f, step = 1f) {
+                update(st.copy(dockCellDp = it.roundToInt()))
             }
             ToggleRow("アプリ名を表示", st.dockLabels) { update(st.copy(dockLabels = it)) }
         }
