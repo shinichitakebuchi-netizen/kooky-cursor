@@ -324,9 +324,6 @@ private fun Screen(
 
         // ── カーソル ──
         Section("カーソル")
-        SliderRow("速さ", st.speed, 0.5f..5f, String.format("%.1f", st.speed)) {
-            update(st.copy(speed = (it * 10).toInt() / 10f))
-        }
         Label("形")
         ShapePicker(st.cursorShape, st.cursorColor) { update(st.copy(cursorShape = it)) }
         Label("大きさ")
@@ -337,24 +334,51 @@ private fun Screen(
         }
         Label("色")
         ColorPicker(st.cursorColor) { update(st.copy(cursorColor = it)) }
+
+        // 左右それぞれの帯から出したとき
+        var curRight by remember { mutableStateOf(true) }
+        val cRight = when (st.edgeMode) {
+            Settings.EDGE_LEFT -> false
+            Settings.EDGE_RIGHT -> true
+            else -> curRight
+        }
+        if (st.edgeMode == Settings.EDGE_BOTH) {
+            Label("設定する側")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Choice("左の帯から", !cRight) { curRight = false }
+                Choice("右の帯から", cRight) { curRight = true }
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "反対側と同じにする", color = Usuzumi, fontSize = 12.sp,
+                    modifier = Modifier.clickable {
+                        update(st.withCursor(cRight, st.cursor(!cRight)))
+                    }.padding(vertical = 6.dp)
+                )
+            }
+        }
+        val cur = st.cursor(cRight)
+        val setCur: (CursorSide) -> Unit = { update(st.withCursor(cRight, it)) }
+        SliderRow(if (cRight) "速さ（右の帯から）" else "速さ（左の帯から）", cur.speed, 0.5f..5f, String.format("%.1f", cur.speed)) {
+            setCur(cur.copy(speed = (it * 10).toInt() / 10f))
+        }
         Label("出てくる位置")
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Choice("指の近く", !st.startFixed) { update(st.copy(startFixed = false)) }
-            Choice("決まった位置", st.startFixed) { update(st.copy(startFixed = true)) }
+            Choice("指の近く", !cur.startFixed) { setCur(cur.copy(startFixed = false)) }
+            Choice("決まった位置", cur.startFixed) { setCur(cur.copy(startFixed = true)) }
         }
-        if (!st.startFixed) {
-            SliderRow("指から内側へ", st.startOffsetXDp.toFloat(), 0f..300f, "${st.startOffsetXDp}dp") {
-                update(st.copy(startOffsetXDp = it.toInt()))
+        if (!cur.startFixed) {
+            SliderRow("指から内側へ", cur.offsetXDp.toFloat(), 0f..300f, "${cur.offsetXDp}dp") {
+                setCur(cur.copy(offsetXDp = it.toInt()))
             }
-            SliderRow("指から上へ", st.startOffsetYDp.toFloat(), -200f..400f, "${st.startOffsetYDp}dp") {
-                update(st.copy(startOffsetYDp = it.toInt()))
+            SliderRow("指から上へ", cur.offsetYDp.toFloat(), -200f..400f, "${cur.offsetYDp}dp") {
+                setCur(cur.copy(offsetYDp = it.toInt()))
             }
         } else {
-            SliderRow("横", st.startXPercent.toFloat(), 0f..100f, "${st.startXPercent}%") {
-                update(st.copy(startXPercent = it.toInt()))
+            SliderRow("横", cur.xPercent.toFloat(), 0f..100f, "${cur.xPercent}%") {
+                setCur(cur.copy(xPercent = it.toInt()))
             }
-            SliderRow("縦", st.startYPercent.toFloat(), 0f..100f, "${st.startYPercent}%") {
-                update(st.copy(startYPercent = it.toInt()))
+            SliderRow("縦", cur.yPercent.toFloat(), 0f..100f, "${cur.yPercent}%") {
+                setCur(cur.copy(yPercent = it.toInt()))
             }
         }
 

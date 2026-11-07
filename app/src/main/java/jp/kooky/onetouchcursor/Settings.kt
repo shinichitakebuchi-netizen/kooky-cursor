@@ -14,16 +14,12 @@ data class Settings(
     val showArea: Boolean = true,         // 触れる範囲を常にうっすら表示
 
     // ── カーソル ──
-    val speed: Float = 2.5f,              // 0.5〜5.0
     val cursorSize: Int = 1,              // 0=小 1=中 2=大
     val cursorColor: Int = 0xFFF35336.toInt(),
     val cursorShape: Int = 0,             // CursorShapes の番号
-    // カーソルの初期位置
-    val startFixed: Boolean = false,      // false=指の近く / true=画面の決まった位置
-    val startOffsetXDp: Int = 70,         // 指の近く：指から内側へ
-    val startOffsetYDp: Int = 40,         // 指の近く：指から上へ（マイナスで下）
-    val startXPercent: Int = 50,          // 決まった位置：左端=0% / 右端=100%
-    val startYPercent: Int = 40,          // 決まった位置：上端=0% / 下端=100%
+    // 左右それぞれの帯から出したときの、カーソルの速さと出てくる位置
+    val leftCursor: CursorSide = CursorSide(),
+    val rightCursor: CursorSide = CursorSide(),
 
     // ── ドック ──
     val dockEnabled: Boolean = true,
@@ -53,15 +49,9 @@ data class Settings(
             .putInt(K_HOLD, holdMs)
             .putBoolean(K_ENABLED, enabled)
             .putBoolean(K_AREA, showArea)
-            .putFloat(K_SPEED, speed)
             .putInt(K_SIZE, cursorSize)
             .putInt(K_COLOR, cursorColor)
             .putInt(K_SHAPE, cursorShape)
-            .putBoolean(K_SFIXED, startFixed)
-            .putInt(K_SOX, startOffsetXDp)
-            .putInt(K_SOY, startOffsetYDp)
-            .putInt(K_SXP, startXPercent)
-            .putInt(K_SYP, startYPercent)
             .putBoolean(K_VIB, vibrate)
             .putInt(K_FONT, font)
             .putInt(K_THEME, theme)
@@ -75,12 +65,18 @@ data class Settings(
             .putInt(K_DY, dockYPercent)
             .putInt(K_DGAP, dockGapDp)
             .putBoolean(K_CANCEL, cancelOnReturn)
-            .also { e -> left.save(e, "L_"); right.save(e, "R_") }
+            .also { e ->
+                left.save(e, "L_"); right.save(e, "R_")
+                leftCursor.save(e, "LC_"); rightCursor.save(e, "RC_")
+            }
             .apply()
     }
 
     fun bar(rightSide: Boolean): Bar = if (rightSide) right else left
     fun withBar(rightSide: Boolean, b: Bar): Settings = if (rightSide) copy(right = b) else copy(left = b)
+    fun cursor(rightSide: Boolean): CursorSide = if (rightSide) rightCursor else leftCursor
+    fun withCursor(rightSide: Boolean, c: CursorSide): Settings =
+        if (rightSide) copy(rightCursor = c) else copy(leftCursor = c)
 
     companion object {
         const val PREFS_NAME = "onetouch_settings_v2"
@@ -131,18 +127,14 @@ data class Settings(
                 else if (p.getBoolean(K_RIGHT, true)) EDGE_RIGHT else EDGE_LEFT,
                 left = Bar.load(p, "L_"),
                 right = Bar.load(p, "R_"),
+                leftCursor = CursorSide.load(p, "LC_"),
+                rightCursor = CursorSide.load(p, "RC_"),
                 holdMs = p.getInt(K_HOLD, d.holdMs),
                 enabled = p.getBoolean(K_ENABLED, d.enabled),
                 showArea = p.getBoolean(K_AREA, d.showArea),
-                speed = p.getFloat(K_SPEED, d.speed),
                 cursorSize = p.getInt(K_SIZE, d.cursorSize),
                 cursorColor = p.getInt(K_COLOR, d.cursorColor),
                 cursorShape = p.getInt(K_SHAPE, d.cursorShape),
-                startFixed = p.getBoolean(K_SFIXED, d.startFixed),
-                startOffsetXDp = p.getInt(K_SOX, d.startOffsetXDp),
-                startOffsetYDp = p.getInt(K_SOY, d.startOffsetYDp),
-                startXPercent = p.getInt(K_SXP, d.startXPercent),
-                startYPercent = p.getInt(K_SYP, d.startYPercent),
                 vibrate = p.getBoolean(K_VIB, d.vibrate),
                 font = p.getInt(K_FONT, d.font),
                 theme = p.getInt(K_THEME, d.theme),
@@ -195,6 +187,40 @@ data class Bar(
                 lengthDp = p.getInt(k + "len", p.getInt(Settings.K_LEN, d.lengthDp)),
                 widthDp = p.getInt(k + "width", p.getInt(Settings.K_WIDTH, d.widthDp)),
                 transparency = p.getInt(k + "trans", p.getInt(Settings.K_TTRANS, d.transparency)),
+            )
+        }
+    }
+}
+
+/** 片側の帯から出したときのカーソル（速さ・出てくる位置） */
+data class CursorSide(
+    val speed: Float = 2.5f,              // 0.5〜5.0
+    val startFixed: Boolean = false,      // false=指の近く / true=画面の決まった位置
+    val offsetXDp: Int = 70,              // 指の近く：指から内側へ
+    val offsetYDp: Int = 40,              // 指の近く：指から上へ（マイナスで下）
+    val xPercent: Int = 50,               // 決まった位置：左端=0% / 右端=100%
+    val yPercent: Int = 40,               // 決まった位置：上端=0% / 下端=100%
+) {
+    fun save(e: SharedPreferences.Editor, k: String) {
+        e.putFloat(k + "speed", speed)
+            .putBoolean(k + "fixed", startFixed)
+            .putInt(k + "ox", offsetXDp)
+            .putInt(k + "oy", offsetYDp)
+            .putInt(k + "xp", xPercent)
+            .putInt(k + "yp", yPercent)
+    }
+
+    companion object {
+        /** 左右別の設定が無ければ、前の共通の設定から引き継ぐ */
+        fun load(p: SharedPreferences, k: String): CursorSide {
+            val d = CursorSide()
+            return CursorSide(
+                speed = p.getFloat(k + "speed", p.getFloat(Settings.K_SPEED, d.speed)),
+                startFixed = p.getBoolean(k + "fixed", p.getBoolean(Settings.K_SFIXED, d.startFixed)),
+                offsetXDp = p.getInt(k + "ox", p.getInt(Settings.K_SOX, d.offsetXDp)),
+                offsetYDp = p.getInt(k + "oy", p.getInt(Settings.K_SOY, d.offsetYDp)),
+                xPercent = p.getInt(k + "xp", p.getInt(Settings.K_SXP, d.xPercent)),
+                yPercent = p.getInt(k + "yp", p.getInt(Settings.K_SYP, d.yPercent)),
             )
         }
     }

@@ -178,7 +178,7 @@ class CursorService : AccessibilityService(),
                 visibility = if (on) View.VISIBLE else View.GONE
                 alpha = triggerAlpha(right)
                 holdMs = s.holdMs.toLong()
-                speed = s.speed
+                speed = s.cursor(right).speed
                 cancelOnReturn = s.cancelOnReturn
                 barColor = b.shownColor
                 barStyle = b.style
@@ -203,15 +203,16 @@ class CursorService : AccessibilityService(),
     // ───────── TriggerView.Listener ─────────
 
     override fun showCursorNear(rawX: Float, rawY: Float, fromRight: Boolean) {
-        if (s.startFixed) {
+        val c = s.cursor(fromRight)
+        if (c.startFixed) {
             // 画面の決まった位置
-            cx = screenW * s.startXPercent / 100f
-            cy = screenH * s.startYPercent / 100f
+            cx = screenW * c.xPercent / 100f
+            cy = screenH * c.yPercent / 100f
         } else {
             // 指の近く（内側へ startOffsetX、上へ startOffsetY）
-            val inward = dp(s.startOffsetXDp).toFloat()
+            val inward = dp(c.offsetXDp).toFloat()
             cx = if (fromRight) rawX - inward else rawX + inward
-            cy = rawY - dp(s.startOffsetYDp).toFloat()
+            cy = rawY - dp(c.offsetYDp).toFloat()
         }
         clampCursor()
         cursorView?.apply {
