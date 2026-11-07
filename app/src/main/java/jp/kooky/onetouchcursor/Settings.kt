@@ -34,7 +34,8 @@ data class Settings(
 
     // ── 文字・色 ──
     val font: Int = 0,                    // AppFonts の番号
-    val theme: Int = Theme.DARK,          // Theme の番号（ダーク／ライト／システム）
+    val theme: Int = Theme.DARK,          // Theme の番号（墨／白練／移ろい）
+    val accent: Int = Theme.DEFAULT_ACCENT, // 差し色（Theme.PICK の番号）
 
     // ── 操作 ──
     val vibrate: Boolean = true,
@@ -55,6 +56,7 @@ data class Settings(
             .putBoolean(K_VIB, vibrate)
             .putInt(K_FONT, font)
             .putInt(K_THEME, theme)
+            .putInt(K_ACCENT, accent)
             .putBoolean(K_DOCK, dockEnabled)
             .putInt(K_DCOLS, dockCols)
             .putInt(K_DROWS, dockRows)
@@ -107,6 +109,7 @@ data class Settings(
         const val K_VIB = "vibrate"
         const val K_FONT = "font"
         const val K_THEME = "theme"
+        const val K_ACCENT = "accent"
         const val K_DOCK = "dock_enabled"
         const val K_DCOLS = "dock_cols"
         const val K_DROWS = "dock_rows"
@@ -140,6 +143,7 @@ data class Settings(
                 vibrate = p.getBoolean(K_VIB, d.vibrate),
                 font = p.getInt(K_FONT, d.font),
                 theme = p.getInt(K_THEME, d.theme),
+                accent = p.getInt(K_ACCENT, d.accent),
                 dockEnabled = p.getBoolean(K_DOCK, d.dockEnabled),
                 dockCols = p.getInt(K_DCOLS, d.dockCols),
                 dockRows = p.getInt(K_DROWS, d.dockRows),

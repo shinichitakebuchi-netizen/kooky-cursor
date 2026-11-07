@@ -84,7 +84,13 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_EDIT_DOCK = "edit_dock"
+        const val EXTRA_HOME = "home"
     }
+
+    /** 設定の階層：-1=一覧 / 0〜5=各ページ（庵と同じ作り） */
+    private val settingsPage = mutableIntStateOf(-1)
+    /** 移ろいの切り替えを、開いている間も1分ごとに見直す */
+    private val minuteTick = mutableIntStateOf(0)
 
     private val serviceOn = mutableStateOf(false)
     /** 表示中の画面："main" / "editor"（ドックの中身） / "overview"（ドックの設置） / "picker"（項目の追加） */
@@ -93,13 +99,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (intent.getBooleanExtra(EXTRA_EDIT_DOCK, false)) page.value = "editor"
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(i: Intent?) {
+        if (i?.getBooleanExtra(EXTRA_EDIT_DOCK, false) == true) page.value = "editor"
+        if (i?.getBooleanExtra(EXTRA_HOME, false) == true) { page.value = "main"; settingsPage.intValue = -1 }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val prefs = Settings.prefs(this)
-        if (intent?.getBooleanExtra(EXTRA_EDIT_DOCK, false) == true) page.value = "editor"
+        handleIntent(intent)
         setContent {
             MaterialTheme(
                 colorScheme = darkColorScheme(
@@ -111,12 +122,12 @@ class MainActivity : ComponentActivity() {
             ) {
                 var st by remember { mutableStateOf(Settings.load(prefs)) }
                 val update: (Settings) -> Unit = { n -> st = n; n.save(prefs) }
-                val dark = when (st.theme) {
-                    Theme.DARK -> true
-                    Theme.LIGHT -> false
-                    else -> isSystemInDarkTheme()
+                LaunchedEffect(Unit) {
+                    while (true) { kotlinx.coroutines.delay(60_000); minuteTick.intValue++ }
                 }
-                val p = if (dark) Theme.darkPal else Theme.lightPal
+                minuteTick.intValue   // 移ろいのため、1分ごとに読み直す
+                val dark = !Theme.isLight(st.theme)
+                val p = Theme.palette(!dark, st.accent)
                 if (pal.value != p) pal.value = p
                 SideEffect {
                     window.decorView.setBackgroundColor(p.bg)
@@ -136,7 +147,7 @@ class MainActivity : ComponentActivity() {
                     }
                     "overview" -> {
                         BackHandler { page.value = "main" }
-                        DockOverview(st, update) { page.value = "main" }
+                        DockOverview(st, update, home = { page.value = "main"; settingsPage.intValue = -1 }) { page.value = "main" }
                         return@ProvideTextStyle
                     }
                     "editor" -> {
@@ -144,12 +155,17 @@ class MainActivity : ComponentActivity() {
                         DockEditor(
                             st, update,
                             openPicker = { pickerBack = "editor"; page.value = "picker" },
-                            close = { page.value = "main" }
+                            close = { page.value = "main" },
+                            home = { page.value = "main"; settingsPage.intValue = -1 }
                         )
                         return@ProvideTextStyle
                     }
                 }
+                if (settingsPage.intValue >= 0) BackHandler { settingsPage.intValue = -1 }
                 Screen(
+                    settingsPage = settingsPage.intValue,
+                    openPage = { settingsPage.intValue = it },
+                    closeApp = { finish() },
                     openPicker = { pickerBack = "main"; page.value = "picker" },
                     openEditor = { page.value = "editor" },
                     openOverview = { page.value = "overview" },
@@ -203,6 +219,9 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun Screen(
+    settingsPage: Int,
+    openPage: (Int) -> Unit,
+    closeApp: () -> Unit,
     openPicker: () -> Unit,
     openEditor: () -> Unit,
     openOverview: () -> Unit,
@@ -222,28 +241,28 @@ private fun Screen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 28.dp)
     ) {
-        // ── 表題 ──
+        // ── 表題（一覧のときだけ） ──
         Spacer(Modifier.height(36.dp))
-        Row(verticalAlignment = Alignment.Bottom) {
-            Text("縁", color = Kinari, fontSize = 44.sp, fontFamily = Mincho, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.width(12.dp))
-            Text("へり", color = Usuzumi, fontSize = 13.sp, letterSpacing = 3.sp,
-                modifier = Modifier.padding(bottom = 8.dp))
-            Spacer(Modifier.weight(1f))
-            Text(
-                if (serviceOn) "稼働中" else "停止中",
-                color = Usuzumi, fontSize = 13.sp,
-                modifier = Modifier.padding(bottom = 10.dp)
-            )
-            Spacer(Modifier.width(6.dp))
-            Box(
-                Modifier.padding(bottom = 13.dp).size(8.dp).clip(CircleShape)
-                    .background(if (serviceOn) Wakatake else Shu)
-            )
-        }
-        Spacer(Modifier.height(10.dp))
-        Note("画面の端を長押しして、そのまま指を滑らせるとカーソルが出ます。指を離した場所を押します。")
-
+        if (settingsPage < 0) {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text("縁", color = Kinari, fontSize = 44.sp, fontFamily = Mincho, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.width(12.dp))
+                Text("へり", color = Usuzumi, fontSize = 13.sp, letterSpacing = 3.sp,
+                    modifier = Modifier.padding(bottom = 10.dp))
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "閉じる", color = Usuzumi, fontSize = 13.sp, letterSpacing = 2.sp,
+                    modifier = Modifier.clickable(onClick = closeApp).padding(start = 12.dp, top = 8.dp, bottom = 10.dp)
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(7.dp).clip(CircleShape).background(if (serviceOn) Wakatake else Shu))
+                Spacer(Modifier.width(8.dp))
+                Text(if (serviceOn) "稼働中" else "停止中", color = Usuzumi, fontSize = 12.sp)
+            }
+            Spacer(Modifier.height(8.dp))
+            Note("画面の端を長押しして指を滑らせるとカーソル、長押しせずに滑らせるとドックが出ます。変えた内容はすぐに反映されます。")
         // ── 停止中の案内 ──
         if (!serviceOn) {
             Section("はじめに")
@@ -258,6 +277,47 @@ private fun Screen(
             }
         }
 
+
+            // ── 一覧 ──
+            Section("設定")
+            val sideName = when (st.edgeMode) { Settings.EDGE_LEFT -> "左"; Settings.EDGE_RIGHT -> "右"; else -> "両方" }
+            val barNames = when (st.edgeMode) {
+                Settings.EDGE_LEFT -> BarStyles.names[st.left.style]
+                Settings.EDGE_RIGHT -> BarStyles.names[st.right.style]
+                else -> "左 " + BarStyles.names[st.left.style] + "／右 " + BarStyles.names[st.right.style]
+            }
+            MenuRow("触れる帯", (if (st.enabled) "$sideName・$barNames" else "表示しない")) { openPage(0) }
+            MenuRow("カーソル", CursorShapes.names.getOrElse(st.cursorShape) { "" } + "・${st.cursorRadiusDp}dp") { openPage(1) }
+            MenuRow("ドック", if (st.dockEnabled) "${DockItems.parse(st.dockItems).size}項目・横${st.dockCols}" else "使わない") { openPage(2) }
+            MenuRow("色合い", Theme.names.getOrElse(st.theme) { "" } + "・差し色 " + Theme.PICK_NAMES.getOrElse(st.accent) { "" }) { openPage(3) }
+            MenuRow("文字", AppFonts.names.getOrElse(st.font) { "" }) { openPage(4) }
+            MenuRow("操作", "振動 " + (if (st.vibrate) "入" else "切") + "・取り消し " + (if (st.cancelOnReturn) "入" else "切")) { openPage(5) }
+
+        // ── 更新 ──
+        Spacer(Modifier.height(56.dp))
+        Text(
+            "更新する　v$version",
+            color = Usuzumi, fontSize = 13.sp, letterSpacing = 2.sp,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .clickable(onClick = openUpdate)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        )
+        } else {
+            // ── ページの上：‹ 設定（戻る）・閉じる ──
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "‹　設定", color = Usuzumi, fontSize = 14.sp, letterSpacing = 2.sp,
+                    modifier = Modifier.clickable { openPage(-1) }.padding(end = 16.dp, top = 8.dp, bottom = 8.dp)
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "閉じる", color = Usuzumi, fontSize = 13.sp, letterSpacing = 2.sp,
+                    modifier = Modifier.clickable(onClick = closeApp).padding(start = 16.dp, top = 8.dp, bottom = 8.dp)
+                )
+            }
+            when (settingsPage) {
+                0 -> {
         // ── 触れる帯 ──
         Section("触れる帯")
         ToggleRow("表示する", st.enabled) { update(st.copy(enabled = it)) }
@@ -322,6 +382,8 @@ private fun Screen(
             setBar(bar.copy(transparency = it.roundToInt()))
         }
 
+                }
+                1 -> {
         // ── カーソル ──
         Section("カーソル")
         Label("形")
@@ -379,6 +441,8 @@ private fun Screen(
             }
         }
 
+                }
+                2 -> {
         // ── ドック ──
         Section("ドック")
         Note("帯を長押しせずにそのまま滑らせるとドックが出ます。項目の上で指を離すと起動します。")
@@ -388,16 +452,30 @@ private fun Screen(
         Spacer(Modifier.height(10.dp))
         Choice("ドックの中身（アプリの追加・並び・大きさ）", false, onClick = openEditor)
         Spacer(Modifier.height(4.dp))
-        Note("ドックの上の「⚙ 設定」で指を離すと、ドックの中身の画面が開きます。")
+        Note("ドックの上の帯は、左「⚙ ドック」で指を離すとドックの中身、右「設定」で離すとこの設定の一覧が開きます。")
 
-        // ── 色 ──
-        Section("色")
+                }
+                3 -> {
+        // ── 色合い ──
+        Section("色合い")
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Theme.order.forEach { i ->
                 Choice(Theme.names[i], st.theme == i) { update(st.copy(theme = i)) }
             }
         }
+        Spacer(Modifier.height(10.dp))
+        val (rise, set) = ThemeClock.sunTimes()
+        Note(
+            "移ろいは、日の出から日の入りまで白練、それ以外は墨になります（前橋の時刻）。" +
+                "今日は ${rise / 60}:${"%02d".format(rise % 60)} 〜 ${set / 60}:${"%02d".format(set % 60)}。"
+        )
+        Label("差し色")
+        AccentPicker(st.accent) { update(st.copy(accent = it)) }
+        Spacer(Modifier.height(10.dp))
+        Note("見出し・入／切の「入」・数値などの色です。帯とカーソルの色は、それぞれの設定で選びます。")
 
+                }
+                4 -> {
         // ── 文字 ──
         Section("文字")
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -421,6 +499,8 @@ private fun Screen(
         Spacer(Modifier.height(6.dp))
         Note("Kaisei Tokumin・Yuji Syuku は SIL Open Font License 1.1 の無料フォントです。")
 
+                }
+                5 -> {
         // ── 操作 ──
         Section("操作")
         ToggleRow("振動", st.vibrate) { update(st.copy(vibrate = it)) }
@@ -428,24 +508,64 @@ private fun Screen(
             update(st.copy(cancelOnReturn = it))
         }
 
-        Spacer(Modifier.height(28.dp))
-        Note("この画面を開いている間は、カーソルは出ますが指を離しても押しません。")
 
-        // ── 更新 ──
-        Spacer(Modifier.height(48.dp))
-        Text(
-            "更新する　v$version",
-            color = Usuzumi, fontSize = 13.sp, letterSpacing = 2.sp,
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .clickable(onClick = openUpdate)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-        )
+                }
+            }
+            Spacer(Modifier.height(28.dp))
+            Note("この画面を開いている間は、カーソルやドックは出ますが、指を離しても押しません。")
+        }
         Spacer(Modifier.height(32.dp))
     }
 }
 
 // ───────── 部品 ─────────
+
+/** 一覧の1行：名前・今の設定・›（庵と同じ） */
+@Composable
+private fun MenuRow(title: String, summary: String, onClick: () -> Unit) {
+    Column(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+        Row(Modifier.padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(title, color = Kinari, fontSize = 15.sp)
+                Spacer(Modifier.height(4.dp))
+                Text(summary, color = Usuzumi, fontSize = 12.sp, maxLines = 1)
+            }
+            Text("›", color = Usuzumi, fontSize = 20.sp)
+        }
+        HRule(thin = true)
+    }
+}
+
+/** 差し色：18色（6色×3行）。選択中は文字色の細い輪（庵と同じ） */
+@Composable
+private fun AccentPicker(current: Int, onPick: (Int) -> Unit) {
+    Column {
+        for (r in 0 until 3) {
+            Row(Modifier.fillMaxWidth()) {
+                for (c in 0 until 6) {
+                    val i = r * 6 + c
+                    val sel = i == current
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.weight(1f).clickable { onPick(i) }.padding(top = 8.dp)
+                    ) {
+                        Box(
+                            Modifier
+                                .size(32.dp)
+                                .border(1.dp, if (sel) Kinari else Color.Transparent, CircleShape)
+                                .padding(3.dp)
+                                .clip(CircleShape)
+                                .background(Color(Theme.PICK[i]))
+                                .border(0.5.dp, Line, CircleShape)
+                        )
+                        Text(Theme.PICK_NAMES[i], color = Usuzumi, fontSize = 10.sp, maxLines = 1,
+                            modifier = Modifier.padding(top = 3.dp))
+                    }
+                }
+            }
+        }
+    }
+}
 
 /** 見出し：明朝・朱・字間あり＋細い罫線 */
 @Composable
@@ -941,7 +1061,7 @@ private fun PickRow(key: String, label: String, selected: Boolean, onClick: () -
  * ドックを置く場所は「設置」（画面全体を縮小した図）で決める。
  */
 @Composable
-private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () -> Unit, close: () -> Unit) {
+private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () -> Unit, close: () -> Unit, home: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     val items = DockItems.parse(st.dockItems)
     var dockRef by remember { mutableStateOf<DockView?>(null) }
@@ -1045,9 +1165,17 @@ private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () 
                 .padding(horizontal = 28.dp, vertical = 14.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("ドックの中身", color = Kinari, fontSize = 18.sp, fontFamily = Mincho, modifier = Modifier.weight(1f))
+                Text(
+                    "‹　設定", color = Usuzumi, fontSize = 14.sp, letterSpacing = 2.sp,
+                    modifier = Modifier.clickable(onClick = home).padding(end = 16.dp, top = 6.dp, bottom = 6.dp)
+                )
+                Spacer(Modifier.weight(1f))
                 Choice("完了", true, onClick = close)
             }
+            Spacer(Modifier.height(4.dp))
+            Text("ドックの中身", color = Shu, fontSize = 15.sp, fontFamily = Mincho, letterSpacing = 4.sp)
+            Spacer(Modifier.height(8.dp))
+            HRule()
             Spacer(Modifier.height(6.dp))
             Note("長押しで持ち上げて移動／「×」で外す／右上の「＋ 追加」で追加")
             Label("横の数")
@@ -1069,7 +1197,7 @@ private fun DockEditor(st: Settings, update: (Settings) -> Unit, openPicker: () 
 // ───────── 位置の調整（画面全体を縮小して見る） ─────────
 
 @Composable
-private fun DockOverview(st: Settings, update: (Settings) -> Unit, close: () -> Unit) {
+private fun DockOverview(st: Settings, update: (Settings) -> Unit, home: () -> Unit, close: () -> Unit) {
     val ctx = LocalContext.current
     val d = LocalDensity.current.density
     val bounds = remember {
@@ -1095,9 +1223,17 @@ private fun DockOverview(st: Settings, update: (Settings) -> Unit, close: () -> 
     ) {
         Spacer(Modifier.height(20.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("ドックの設置", color = Kinari, fontSize = 20.sp, fontFamily = Mincho, modifier = Modifier.weight(1f))
+            Text(
+                "‹　設定", color = Usuzumi, fontSize = 14.sp, letterSpacing = 2.sp,
+                modifier = Modifier.clickable(onClick = home).padding(end = 16.dp, top = 6.dp, bottom = 6.dp)
+            )
+            Spacer(Modifier.weight(1f))
             Choice("完了", true, onClick = close)
         }
+        Spacer(Modifier.height(4.dp))
+        Text("ドックの設置", color = Shu, fontSize = 15.sp, fontFamily = Mincho, letterSpacing = 4.sp)
+        Spacer(Modifier.height(8.dp))
+        HRule()
         Spacer(Modifier.height(6.dp))
         Note("画面全体を縮めて表示しています。ドックを指で動かして置き場所を決めてください。")
         Spacer(Modifier.height(4.dp))

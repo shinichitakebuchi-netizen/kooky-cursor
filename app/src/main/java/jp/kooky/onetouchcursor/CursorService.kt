@@ -245,7 +245,7 @@ class CursorService : AccessibilityService(),
         v.cellDp = s.dockCellDp.toFloat()
         v.showLabels = s.dockLabels
         v.fontIndex = s.font
-        v.pal = Theme.pal(this, s.theme)
+        v.pal = Theme.pal(this, s.theme, s.accent)
         v.posFixed = s.dockFixed
         v.posYPercent = s.dockYPercent
         v.gapDp = s.dockGapDp.toFloat()
@@ -257,7 +257,7 @@ class CursorService : AccessibilityService(),
     override fun dockMove(rawX: Float, rawY: Float) {
         val v = dockView ?: return
         val h = v.hit(rawX, rawY)
-        if (v.setHovered(h) && (h >= 0 || h == DockView.HIT_HEADER)) haptic(false)
+        if (v.setHovered(h) && (h >= 0 || h == DockView.HIT_HEADER || h == DockView.HIT_HOME)) haptic(false)
     }
 
     override fun dockRelease(rawX: Float, rawY: Float) {
@@ -267,12 +267,13 @@ class CursorService : AccessibilityService(),
         v.hide()
         // 設定画面を開いている間は見た目の確認だけ（起動しない）
         if (previewOn) return
-        if (h == DockView.HIT_HEADER) {
-            // 「⚙ 設定」→ ドックの設置画面を開く
+        if (h == DockView.HIT_HEADER || h == DockView.HIT_HOME) {
+            // 左「⚙ ドック」→ ドックの中身 ／ 右「設定」→ 設定の一覧
             runCatching {
                 startActivity(
                     android.content.Intent(this, MainActivity::class.java)
-                        .putExtra(MainActivity.EXTRA_EDIT_DOCK, true)
+                        .putExtra(MainActivity.EXTRA_EDIT_DOCK, h == DockView.HIT_HEADER)
+                        .putExtra(MainActivity.EXTRA_HOME, h == DockView.HIT_HOME)
                         .addFlags(
                             android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
                                 android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or

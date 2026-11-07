@@ -21,6 +21,7 @@ class DockView(context: Context) : View(context) {
         const val HIT_NONE = -1
         const val HIT_HEADER = -2   // 上の「設定」ボタン（設置画面では位置調整のつまみ）
         const val HIT_ADD = -3      // 設置画面の「＋ 追加」
+        const val HIT_HOME = -4     // 上の帯の右半分「設定」（設定の一覧へ）
 
         const val HEADER_DP = 30f
         const val PAD_DP = 12f
@@ -142,6 +143,7 @@ class DockView(context: Context) : View(context) {
         if (y < panel.top + headerH) {
             // 設置画面：帯の右側は「＋ 追加」
             if (editMode && keys.size < cap() && x > panel.right - 84f * d) return HIT_ADD
+            if (!editMode && x > panel.centerX()) return HIT_HOME
             return HIT_HEADER
         }
         val i = cellIndex(x, y)
@@ -200,8 +202,11 @@ class DockView(context: Context) : View(context) {
         // 上の帯：設定ボタン（設置画面では位置調整のつまみ）
         val hb = panel.top + headerH
         val headOn = hovered == HIT_HEADER
-        if (headOn) {
-            tmp.set(panel.left + 2f * d, panel.top + 2f * d, panel.right - 2f * d, hb)
+        val homeOn = hovered == HIT_HOME
+        if (headOn || homeOn) {
+            if (editMode) tmp.set(panel.left + 2f * d, panel.top + 2f * d, panel.right - 2f * d, hb)
+            else if (headOn) tmp.set(panel.left + 2f * d, panel.top + 2f * d, panel.centerX(), hb)
+            else tmp.set(panel.centerX(), panel.top + 2f * d, panel.right - 2f * d, hb)
             bg.color = cTorinoko; bg.alpha = 40
             canvas.drawRoundRect(tmp, 3f * d, 3f * d, bg)
         }
@@ -218,7 +223,14 @@ class DockView(context: Context) : View(context) {
             }
             text.textAlign = Paint.Align.CENTER
         } else {
-            canvas.drawText("⚙　設定", panel.centerX(), panel.top + headerH / 2 + 4f * d, text)
+            // 左：ドックの中身 ／ 右：設定の一覧（間に細い縦線）
+            val ty = panel.top + headerH / 2 + 4f * d
+            text.color = if (headOn) cTorinoko else cKame
+            canvas.drawText("⚙　ドック", (panel.left + panel.centerX()) / 2, ty, text)
+            text.color = if (homeOn) cTorinoko else cKame
+            canvas.drawText("設定　›", (panel.centerX() + panel.right) / 2, ty, text)
+            canvas.drawLine(panel.centerX(), panel.top + 8f * d, panel.centerX(), hb - 8f * d,
+                line.apply { color = cRikyu; strokeWidth = 0.6f * d })
         }
 
         if (keys.isEmpty()) {
