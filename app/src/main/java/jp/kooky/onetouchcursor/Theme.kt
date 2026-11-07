@@ -11,8 +11,8 @@ object Theme {
     const val DARK = 0
     const val LIGHT = 1
     const val SYSTEM = 2
-    val names = listOf("ダーク（墨）", "ライト（白練）", "システムに合わせる")
-    val order = listOf(SYSTEM, DARK, LIGHT)
+    val names = listOf("墨", "白練", "移ろい")   // 移ろい＝端末のダーク/ライト設定に合わせて移り変わる
+    val order = listOf(DARK, LIGHT, SYSTEM)
 
     data class Pal(
         val bg: Int,       // 背景
