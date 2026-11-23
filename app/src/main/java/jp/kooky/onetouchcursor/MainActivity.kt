@@ -291,7 +291,7 @@ private fun Screen(
             MenuRow("袂", if (st.dockEnabled) "${DockItems.parse(st.dockItems).size}項目・横${st.dockCols}" else "使わない") { openPage(2) }
             MenuRow("色合い", Theme.names.getOrElse(st.theme) { "" } + "・差し色 " + Theme.PICK_NAMES.getOrElse(st.accent) { "" }) { openPage(3) }
             MenuRow("文字", AppFonts.names.getOrElse(st.font) { "" }) { openPage(4) }
-            MenuRow("操作", "振動 " + (if (st.vibrate) "入" else "切") + "・取り消し " + (if (st.cancelOnReturn) "入" else "切")) { openPage(5) }
+            MenuRow("操作", "音量 " + (if (st.volumeEnabled) "入" else "切") + "・振動 " + (if (st.vibrate) "入" else "切") + "・取り消し " + (if (st.cancelOnReturn) "入" else "切")) { openPage(5) }
 
         // ── 更新 ──
         Spacer(Modifier.height(56.dp))
@@ -502,6 +502,14 @@ private fun Screen(
                 }
                 5 -> {
         // ── 操作 ──
+        Section("音量")
+        Note("帯を長押しせずに、帯に沿って上へ滑らせると音量が上がり、下へ滑らせると下がります。内側（横）へ滑らせると袂が出ます。")
+        ToggleRow("上下に滑らせて音量を変える", st.volumeEnabled) { update(st.copy(volumeEnabled = it)) }
+        SliderRow("1段変わる距離", st.volumeStepDp.toFloat(), 8f..80f, "${st.volumeStepDp}dp", default = 24f, step = 1f) {
+            update(st.copy(volumeStepDp = it.roundToInt()))
+        }
+        ToggleRow("端末の音量表示を出す", st.volumeShowUi) { update(st.copy(volumeShowUi = it)) }
+
         Section("操作")
         ToggleRow("振動", st.vibrate) { update(st.copy(vibrate = it)) }
         ToggleRow("帯に指を戻して離すと取り消し", st.cancelOnReturn) {

@@ -183,6 +183,8 @@ class CursorService : AccessibilityService(),
                 barColor = b.shownColor
                 barStyle = b.style
                 dockEnabled = s.dockEnabled
+                volumeEnabled = s.volumeEnabled
+                volumeStepPx = dp(s.volumeStepDp).toFloat()
                 showArea = s.showArea
                 preview = previewOn
                 invalidate()
@@ -234,6 +236,18 @@ class CursorService : AccessibilityService(),
         cursorView?.visibility = View.GONE
         // 設定画面を開いている間はカーソルの動きだけ確認でき、タップは送らない
         if (!cancelled && !previewOn) tapAt(cx, cy)
+    }
+
+    // ───────── 音量 ─────────
+
+    override fun volumeStep(up: Boolean) {
+        val am = getSystemService(android.media.AudioManager::class.java) ?: return
+        am.adjustStreamVolume(
+            android.media.AudioManager.STREAM_MUSIC,
+            if (up) android.media.AudioManager.ADJUST_RAISE else android.media.AudioManager.ADJUST_LOWER,
+            if (s.volumeShowUi) android.media.AudioManager.FLAG_SHOW_UI else 0
+        )
+        haptic(false)
     }
 
     // ───────── ドック ─────────

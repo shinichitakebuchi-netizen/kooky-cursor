@@ -10,6 +10,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
+import kotlin.math.abs
 import kotlin.math.hypot
 
 /**
@@ -33,6 +34,7 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
         fun dockMove(rawX: Float, rawY: Float)
         fun dockRelease(rawX: Float, rawY: Float)
         fun dockAbort()
+        fun volumeStep(up: Boolean)
     }
 
     var holdMs = 250L
@@ -44,6 +46,8 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
     var showArea = true      // 触れる範囲を常にうっすら表示
     var preview = false      // 設定画面を開いている間は枠付きで濃く表示
     var dockEnabled = true   // 長押しせずに滑らせたらドック
+    var volumeEnabled = true // 長押しせずに帯に沿って上下に滑らせたら音量
+    var volumeStepPx = 24f   // 音量が1段変わる距離
 
     private val density = resources.displayMetrics.density
     private val handler = Handler(Looper.getMainLooper())
@@ -51,6 +55,8 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
 
     private var active = false
     private var docking = false
+    private var volume = false
+    private var volAnchorY = 0f
     private var downRawX = 0f
     private var downRawY = 0f
     private var lastRawX = 0f
@@ -113,6 +119,7 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
             MotionEvent.ACTION_DOWN -> {
                 active = false
                 docking = false
+                volume = false
                 downRawX = e.rawX; downRawY = e.rawY
                 lastRawX = e.rawX; lastRawY = e.rawY
                 lastT = SystemClock.uptimeMillis()
@@ -127,11 +134,24 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
                     lastRawX = x; lastRawY = y
                     return true
                 }
+                if (volume) {
+                    // 上へ1段分動くごとに大きく、下へ1段分で小さく
+                    val step = volumeStepPx.coerceAtLeast(4f)
+                    while (volAnchorY - y >= step) { listener.volumeStep(true); volAnchorY -= step }
+                    while (y - volAnchorY >= step) { listener.volumeStep(false); volAnchorY += step }
+                    lastRawX = x; lastRawY = y
+                    return true
+                }
                 if (!active) {
-                    // 長押し前に動いた → ドック（OFFなら何もしない）
+                    // 長押し前に動いた → 帯に沿って上下なら音量、内側へなら袂（OFFなら何もしない）
                     if (hypot(x - downRawX, y - downRawY) > slop) {
                         handler.removeCallbacks(holdRunnable)
-                        if (dockEnabled && !docking) {
+                        val vertical = abs(y - downRawY) > abs(x - downRawX) * 1.2f
+                        if (volumeEnabled && vertical && !docking) {
+                            volume = true
+                            volAnchorY = downRawY
+                            invalidate()
+                        } else if (dockEnabled && !docking && !volume) {
                             docking = true
                             listener.dockStart(downRawX, downRawY, rightEdge)
                             listener.dockMove(x, y)
@@ -164,6 +184,7 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
                 }
                 active = false
                 docking = false
+                volume = false
                 invalidate()
             }
 
@@ -173,6 +194,7 @@ class TriggerView(context: Context, private val listener: Listener) : View(conte
                 if (docking) listener.dockAbort()
                 active = false
                 docking = false
+                volume = false
                 invalidate()
             }
         }

@@ -37,6 +37,11 @@ data class Settings(
     val theme: Int = Theme.DARK,          // Theme の番号（墨／白練／移ろい）
     val accent: Int = Theme.DEFAULT_ACCENT, // 差し色（Theme.PICK の番号）
 
+    // ── 音量 ──
+    val volumeEnabled: Boolean = true,    // 帯に沿って上下に滑らせて音量
+    val volumeStepDp: Int = 24,           // 1段変わる距離
+    val volumeShowUi: Boolean = true,     // 端末の音量表示を出す
+
     // ── 操作 ──
     val vibrate: Boolean = true,
     val cancelOnReturn: Boolean = true,   // トリガー上に指を戻して離すとキャンセル
@@ -54,6 +59,9 @@ data class Settings(
             .putInt(K_COLOR, cursorColor)
             .putInt(K_SHAPE, cursorShape)
             .putBoolean(K_VIB, vibrate)
+            .putBoolean(K_VOL, volumeEnabled)
+            .putInt(K_VOLSTEP, volumeStepDp)
+            .putBoolean(K_VOLUI, volumeShowUi)
             .putInt(K_FONT, font)
             .putInt(K_THEME, theme)
             .putInt(K_ACCENT, accent)
@@ -107,6 +115,9 @@ data class Settings(
         const val K_SXP = "start_x_pct"
         const val K_SYP = "start_y_pct"
         const val K_VIB = "vibrate"
+        const val K_VOL = "volume_enabled"
+        const val K_VOLSTEP = "volume_step"
+        const val K_VOLUI = "volume_show_ui"
         const val K_FONT = "font"
         const val K_THEME = "theme"
         const val K_ACCENT = "accent"
@@ -141,6 +152,9 @@ data class Settings(
                 cursorColor = p.getInt(K_COLOR, d.cursorColor),
                 cursorShape = p.getInt(K_SHAPE, d.cursorShape),
                 vibrate = p.getBoolean(K_VIB, d.vibrate),
+                volumeEnabled = p.getBoolean(K_VOL, d.volumeEnabled),
+                volumeStepDp = p.getInt(K_VOLSTEP, d.volumeStepDp),
+                volumeShowUi = p.getBoolean(K_VOLUI, d.volumeShowUi),
                 font = p.getInt(K_FONT, d.font),
                 theme = p.getInt(K_THEME, d.theme),
                 accent = p.getInt(K_ACCENT, d.accent),
